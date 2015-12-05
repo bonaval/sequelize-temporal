@@ -16,10 +16,10 @@ Temporal tables maintain __historical versions__ of data. Modifying operations (
 
 Under the hood a history table with the same structure, but without constraints is created.
 
-The normal singular/plural naming scheme in Sequelize is used
+The normal singular/plural naming scheme in Sequelize is used:
 
-- table name:  `tableName() + Histories`
-- model name: `tableName() + History`
+- model name: `modelName + History`
+- table name: `modelName + Histories`
 
 Installation
 ------------

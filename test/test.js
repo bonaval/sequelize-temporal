@@ -7,7 +7,7 @@ var assert = chai.assert;
 var eventually = assert.eventually;
 
 describe('Read-only API', function(){
-  var sequelize, User, UsersHistory;
+  var sequelize, User, UserHistory;
 
   function freshDB(){
     // overwrites the old SQLite DB
@@ -18,7 +18,7 @@ describe('Read-only API', function(){
     User = Temporal(sequelize.define('User', {
       name: Sequelize.TEXT                        
     }), sequelize);
-    UsersHistory = sequelize.models.UsersHistory;
+    UserHistory = sequelize.models.UserHistory;
     return sequelize.sync({ force: true });
   }
 
@@ -36,14 +36,15 @@ describe('Read-only API', function(){
     beforeEach(freshDB);
     it('should save to the historyDB' , function(){
       return User.create()
-      .then(assertCount(UsersHistory,0))
+      .then(assertCount(UserHistory,0))
       .then(function(user){
         user.name = "foo";
         return user.save();
-      }).then(assertCount(UsersHistory,1))
+      }).then(assertCount(UserHistory,1))
       .then(function(user){
         return user.destroy();
-      }).then(assertCount(UsersHistory,2))
+      }).then(assertCount(UserHistory,2))
+      .catchThrow();
     });
   });
 
@@ -53,15 +54,15 @@ describe('Read-only API', function(){
       return sequelize.transaction().then(function(t){
         var opts = {transaction: t};
         return User.create(opts)
-        .then(assertCount(UsersHistory,0, opts))
+        .then(assertCount(UserHistory,0, opts))
         .then(function(user){
           user.name = "foo";
           return user.save(opts);
-        }).then(assertCount(UsersHistory,1, opts))
+        }).then(assertCount(UserHistory,1, opts))
         .then(function(){
           t.rollback();
         });
-      }).then(assertCount(UsersHistory,0));
+      }).then(assertCount(UserHistory,0));
     });
   });
 
@@ -71,10 +72,10 @@ describe('Read-only API', function(){
       return User.bulkCreate([
         {name: "foo1"},
         {name: "foo2"},
-      ]).then(assertCount(UsersHistory,0))
+      ]).then(assertCount(UserHistory,0))
       .then(function(){
         return User.update({ name: 'updated-foo' }, {where: {}});
-      }).then(assertCount(UsersHistory,2))
+      }).then(assertCount(UserHistory,2))
     });
     it('should revert under transactions' , function(){
       return sequelize.transaction().then(function(t){
@@ -82,14 +83,14 @@ describe('Read-only API', function(){
         return User.bulkCreate([
           {name: "foo1"},
           {name: "foo2"},
-        ], opts).then(assertCount(UsersHistory,0,opts))
+        ], opts).then(assertCount(UserHistory,0,opts))
         .then(function(){
           return User.update({ name: 'updated-foo' }, {where: {}, transaction: t});
-        }).then(assertCount(UsersHistory,2, opts))
+        }).then(assertCount(UserHistory,2, opts))
         .then(function(){
           t.rollback();
         });
-      }).then(assertCount(UsersHistory,0));
+      }).then(assertCount(UserHistory,0));
     });
 
   });
@@ -100,13 +101,13 @@ describe('Read-only API', function(){
       return User.bulkCreate([
         {name: "foo1"},
         {name: "foo2"},
-      ]).then(assertCount(UsersHistory,0))
+      ]).then(assertCount(UserHistory,0))
       .then(function(){
         return User.destroy({
           where: {},
           truncate: true // truncate the entire table
         });
-      }).then(assertCount(UsersHistory,2))
+      }).then(assertCount(UserHistory,2))
     });
     it('should revert under transactions' , function(){
       return sequelize.transaction().then(function(t){
@@ -114,18 +115,18 @@ describe('Read-only API', function(){
         return User.bulkCreate([
           {name: "foo1"},
           {name: "foo2"},
-        ], opts).then(assertCount(UsersHistory,0,opts))
+        ], opts).then(assertCount(UserHistory,0,opts))
         .then(function(){
           return User.destroy({
             where: {},
             truncate: true, // truncate the entire table
             transaction: t
           });
-        }).then(assertCount(UsersHistory,2, opts))
+        }).then(assertCount(UserHistory,2, opts))
         .then(function(){
           t.rollback();
         });
-      }).then(assertCount(UsersHistory,0));
+      }).then(assertCount(UserHistory,0));
     });
 
 
@@ -133,13 +134,13 @@ describe('Read-only API', function(){
 
   describe('read-only ', function(){
     it('should forbid updates' , function(){
-      var userUpdate = UsersHistory.create().then(function(uh){
+      var userUpdate = UserHistory.create().then(function(uh){
         uh.update({name: 'bla'});
       });
       return assert.isRejected(userUpdate, Error, "Update error");
     });
     it('should forbid deletes' , function(){
-      var userUpdate = UsersHistory.create().then(function(uh){
+      var userUpdate = UserHistory.create().then(function(uh){
         uh.destroy();
       });
       return assert.isRejected(userUpdate, Error, "Update error");

@@ -11,8 +11,8 @@ var Temporal = function(model, sequelize, temporalOptions){
 
   var Sequelize = sequelize.Sequelize;
 
-  //var historyName = model.name + 'History';
-  var historyName = model.getTableName() + 'History';
+  var historyName = model.name + 'History';
+  //var historyName = model.getTableName() + 'History';
   //var historyName = model.options.name.singular + 'History';
 
   var historyOwnOptions = {
