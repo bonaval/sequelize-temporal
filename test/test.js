@@ -53,12 +53,12 @@ describe('Read-only API', function(){
         return user.save();
       }).then(assertCount(UserHistory,1))
       .then(function(){
-          return UserHistory.findAll();
+        return UserHistory.findAll();
       }).then(function(users){
         assert.equal(users.length,1, "only one entry in DB");
         assert.equal(users[0].name, "foo", "previous entry saved");
       }).then(function(user){
-          return User.findOne();
+        return User.findOne();
       }).then(function(user){
         return user.destroy();
       }).then(assertCount(UserHistory,2))
@@ -70,7 +70,7 @@ describe('Read-only API', function(){
         return user.destroy();
       }).then(assertCount(UserHistory,1))
       .then(function(){
-          return UserHistory.findAll();
+        return UserHistory.findAll();
       }).then(function(users){
         assert.equal(users.length,1, "only one entry in DB");
         assert.equal(users[0].name, "foo", "previous entry saved");
@@ -175,5 +175,60 @@ describe('Read-only API', function(){
       });
       return assert.isRejected(userUpdate, Error, "Update error");
     });
+  });
+
+  describe('interference with the original model', function(){
+
+    beforeEach(freshDB);
+
+    it('shouldn\'t delete instance methods' , function(){
+      Fruit = Temporal(sequelize.define('Fruit', {
+        name: Sequelize.TEXT                        
+      }, {
+        instanceMethods:{
+          sayHi: function(){ return 2;}
+        }
+      }), sequelize);
+      return sequelize.sync().then(function(){
+        return Fruit.create();
+      }).then(function(f){
+        assert.isFunction(f.sayHi);
+        assert.equal(f.sayHi(), 2);
+      });
+    });
+
+    it('shouldn\'t interfere with hooks of the model' , function(){
+      var triggered = 0;
+      Fruit = Temporal(sequelize.define('Fruit', {
+        name: Sequelize.TEXT                        
+      }, {
+        hooks:{
+          beforeCreate: function(){ triggered++;}
+        }
+      }), sequelize);
+      return sequelize.sync().then(function(){
+        return Fruit.create();
+      }).then(function(f){
+        assert.equal(triggered, 1,"hook trigger count");
+      });
+    });
+
+    it('shouldn\'t interfere with setters' , function(){
+      var triggered = 0;
+      Fruit = Temporal(sequelize.define('Fruit', {
+        name: {
+          type: Sequelize.TEXT,
+          set: function(){
+            triggered++;
+          }
+        }
+      }), sequelize);
+      return sequelize.sync().then(function(){
+        return Fruit.create({name: "apple"});
+      }).then(function(f){
+        assert.equal(triggered, 1,"hook trigger count");
+      });
+    });
+
   });
 })
