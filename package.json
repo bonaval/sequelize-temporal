@@ -1,0 +1,41 @@
+{
+  "name": "sequelize-temporal",
+  "version": "1.0.0",
+  "description": "Temporal tables for Sequelize",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "./node_modules/mocha/bin/mocha"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bonaval/sequelize-temporal.git"
+  },
+  "keywords": [
+    "sequelize",
+    "temporal",
+    "versioning",
+    "sql11",
+    "undo",
+    "paranoid",
+    "historical"
+  ],
+  "author": "greenify <greenify@notsharingmy.info> (https://github.com/greenify)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/bonaval/sequelize-temporal/issues"
+  },
+  "homepage": "https://github.com/bonaval/sequelize-temporal#readme",
+  "dependencies": {
+    "lodash": "^3.10.1"
+  },
+  "devDependencies": {
+    "chai": "^3.4.1",
+    "chai-as-promised": "^5.1.0",
+    "mocha": "^2.3.4",
+    "sequelize": "^3.14.2",
+    "sqlite3": "^3.1.1"
+  }
+}
