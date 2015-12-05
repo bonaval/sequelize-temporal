@@ -21,6 +21,12 @@ var Temporal = function(model, sequelize, temporalOptions){
   var historyOptions = _.assign({}, model.options, historyOwnOptions);
   delete historyOptions.name;
   delete historyOptions.sequelize;
+  delete historyOptions.uniqueKeys;
+  delete historyOptions.hasPrimaryKey;
+  delete historyOptions.hooks;
+  delete historyOptions.scopes;
+  delete historyOptions.instanceMethods;
+  delete historyOptions.defaultScope;
 
   var historyOwnAttrs = {
     hid: {
@@ -58,7 +64,8 @@ var Temporal = function(model, sequelize, temporalOptions){
 
   // we already get the updatedAt timestamp from our models
   var insertHook = function(obj, options){
-    var historyRecord = modelHistory.create(obj.dataValues, {transaction: options.transaction});
+    var dataValues = obj._previousDataValues || obj.dataValues;
+    var historyRecord = modelHistory.create(dataValues, {transaction: options.transaction});
     if(temporalOptions.blocking){
       return historyRecord;
     }
@@ -88,7 +95,6 @@ var Temporal = function(model, sequelize, temporalOptions){
   // TODO: handle bulk operations
 
   var readOnlyHook = function(){
-    console.log("read-only");
     throw new Error("This is a read-only history database. You aren't allowed to modify it.");    
   }
 

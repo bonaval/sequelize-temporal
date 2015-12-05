@@ -32,9 +32,9 @@ describe('Read-only API', function(){
     }
   }
 
-  describe('hook', function(){
+  describe('hooks', function(){
     beforeEach(freshDB);
-    it('should save to the historyDB' , function(){
+    it('onUpdate/onDestroy: should save to the historyDB' , function(){
       return User.create()
       .then(assertCount(UserHistory,0))
       .then(function(user){
@@ -44,7 +44,37 @@ describe('Read-only API', function(){
       .then(function(user){
         return user.destroy();
       }).then(assertCount(UserHistory,2))
-      .catchThrow();
+    });
+    it('onUpdate: should store the previous version to the historyDB' , function(){
+      return User.create({name: "foo"})
+      .then(assertCount(UserHistory,0))
+      .then(function(user){
+        user.name = "bar";
+        return user.save();
+      }).then(assertCount(UserHistory,1))
+      .then(function(){
+          return UserHistory.findAll();
+      }).then(function(users){
+        assert.equal(users.length,1, "only one entry in DB");
+        assert.equal(users[0].name, "foo", "previous entry saved");
+      }).then(function(user){
+          return User.findOne();
+      }).then(function(user){
+        return user.destroy();
+      }).then(assertCount(UserHistory,2))
+    });
+    it('onDelete: should store the previous version to the historyDB' , function(){
+      return User.create({name: "foo"})
+      .then(assertCount(UserHistory,0))
+      .then(function(user){
+        return user.destroy();
+      }).then(assertCount(UserHistory,1))
+      .then(function(){
+          return UserHistory.findAll();
+      }).then(function(users){
+        assert.equal(users.length,1, "only one entry in DB");
+        assert.equal(users[0].name, "foo", "previous entry saved");
+      });
     });
   });
 
