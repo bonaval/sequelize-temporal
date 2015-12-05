@@ -89,6 +89,10 @@ History table stores historical versions of rows, which are inserted by triggers
 
 Triggers for storing old versions of rows to history table are inspired by referential integrity triggers. They are fired for each row before UPDATE and DELETE (within the same transaction)
 
+### Notes
+
+If you only use Postgres, you might want to have a look at the [Temporal Table](https://github.com/arkhipov/temporal_tables) extension.
+
 License
 -------
 
