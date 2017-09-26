@@ -50,7 +50,7 @@ var Temporal = function(model, sequelize, temporalOptions){
   var historyOwnOptions = {
     timestamps: false
   };
-  var excludedNames = ["name", "sequelize", "uniqueKeys", "hasPrimaryKey", "hooks", "scopes", "instanceMethods", "defaultScope"];
+  var excludedNames = ["name", "tableName", "sequelize", "uniqueKeys", "hasPrimaryKey", "hooks", "scopes", "instanceMethods", "defaultScope"];
   var modelOptions = excludeAttributes(model.options, excludedNames);
   var historyOptions = _.assign({}, modelOptions, historyOwnOptions);
 
