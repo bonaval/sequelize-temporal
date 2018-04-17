@@ -3,7 +3,8 @@ var _ = require('lodash');
 var temporalDefaultOptions = {
   // runs the insert within the sequelize hook chain, disable
   // for increased performance
-  blocking: true 
+  blocking: true,
+  full: false
 };
 
 var excludeAttributes = function(obj, attrsToExclude){
@@ -64,7 +65,7 @@ var Temporal = function(model, sequelize, temporalOptions){
 
   // we already get the updatedAt timestamp from our models
   var insertHook = function(obj, options){
-    var dataValues = obj._previousDataValues || obj.dataValues;
+    var dataValues = (!temporalOptions.full && obj._previousDataValues) || obj.dataValues;
     var historyRecord = modelHistory.create(dataValues, {transaction: options.transaction});
     if(temporalOptions.blocking){
       return historyRecord;
@@ -86,15 +87,21 @@ var Temporal = function(model, sequelize, temporalOptions){
 
   // use `after` to be nonBlocking
   // all hooks just create a copy
-  model.hook('beforeUpdate', insertHook);
-  model.hook('beforeDestroy', insertHook);
+  if (temporalOptions.full) {
+    model.hook('afterCreate', insertHook);
+    model.hook('afterUpdate', insertHook);
+    model.hook('afterDestroy', insertHook);
+  } else {
+    model.hook('beforeUpdate', insertHook);
+    model.hook('beforeDestroy', insertHook);
+  }
 
   model.hook('beforeBulkUpdate', insertBulkHook);
   model.hook('beforeBulkDestroy', insertBulkHook);
 
   var readOnlyHook = function(){
     throw new Error("This is a read-only history database. You aren't allowed to modify it.");    
-  }
+  };
 
   modelHistory.hook('beforeUpdate', readOnlyHook);
   modelHistory.hook('beforeDestroy', readOnlyHook);
