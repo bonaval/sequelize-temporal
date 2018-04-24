@@ -297,6 +297,25 @@ describe('Read-only API', function(){
         });
     });
 
+    it('onRestore: should store the new version to the historyDB' , function(){
+      return User.create({ name: 'test' })
+        .then(function(user) {
+          return user.destroy();
+        })
+        .then(function(user) {
+          return user.restore();
+        })
+        .then(function() {
+          return UserHistory.findAll();
+        })
+        .then(function(histories) {
+          assert.equal(histories.length, 3, 'three entries in DB');
+          assert.equal(histories[0].name, 'test', 'first version saved');
+          assert.notEqual(histories[1].deletedAt, null, 'deleted version saved');
+          assert.equal(histories[2].deletedAt, null, 'restored version saved');
+        });
+    });
+
     it('should revert on failed transactions, even when using after hooks' , function(){
       return sequelize.transaction()
         .then(function(transaction) {
