@@ -16,7 +16,7 @@ describe('Read-only API', function(){
       storage: __dirname + '/.test.sqlite'
     });
     User = Temporal(sequelize.define('User', {
-      name: Sequelize.TEXT                        
+      name: Sequelize.TEXT
     }), sequelize);
     UserHistory = sequelize.models.UserHistory;
     return sequelize.sync({ force: true });
@@ -39,7 +39,7 @@ describe('Read-only API', function(){
     // wrapped, chainable promise
     return function(obj){
       return modelHistory.count(opts).then(function(count){
-        assert.equal(n, count, "history entries") 
+        assert.equal(n, count, "history entries")
         return obj;
       });
     }
@@ -183,13 +183,13 @@ describe('Read-only API', function(){
       var userUpdate = UserHistory.create().then(function(uh){
         uh.update({name: 'bla'});
       });
-      return assert.isRejected(userUpdate, Error, "Update error");
+      return assert.isRejected(userUpdate, Error, "Validation error");
     });
     it('should forbid deletes' , function(){
       var userUpdate = UserHistory.create().then(function(uh){
         uh.destroy();
       });
-      return assert.isRejected(userUpdate, Error, "Update error");
+      return assert.isRejected(userUpdate, Error, "Validation error");
     });
   });
 
@@ -199,12 +199,9 @@ describe('Read-only API', function(){
 
     it('shouldn\'t delete instance methods' , function(){
       Fruit = Temporal(sequelize.define('Fruit', {
-        name: Sequelize.TEXT                        
-      }, {
-        instanceMethods:{
-          sayHi: function(){ return 2;}
-        }
+        name: Sequelize.TEXT
       }), sequelize);
+      Fruit.prototype.sayHi = function(){ return 2;}
       return sequelize.sync().then(function(){
         return Fruit.create();
       }).then(function(f){
@@ -216,7 +213,7 @@ describe('Read-only API', function(){
     it('shouldn\'t interfere with hooks of the model' , function(){
       var triggered = 0;
       Fruit = Temporal(sequelize.define('Fruit', {
-        name: Sequelize.TEXT                        
+        name: Sequelize.TEXT
       }, {
         hooks:{
           beforeCreate: function(){ triggered++;}
