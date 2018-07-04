@@ -22,6 +22,19 @@ describe('Read-only API', function(){
     return sequelize.sync({ force: true });
   }
 
+  function freshDBWithFullModeAndParanoid() {
+    sequelize = new Sequelize('', '', '', {
+      dialect: 'sqlite',
+      storage: __dirname + '/.test.sqlite'
+    });
+    User = Temporal(sequelize.define('User', {
+      name: Sequelize.TEXT
+    }, { paranoid: true }), sequelize, { full: true });
+    UserHistory = sequelize.models.UserHistory;
+
+    return sequelize.sync({ force: true });
+  }
+
   function assertCount(modelHistory, n, opts){
     // wrapped, chainable promise
     return function(obj){
@@ -34,6 +47,9 @@ describe('Read-only API', function(){
 
   describe('hooks', function(){
     beforeEach(freshDB);
+    it('onCreate: should not store the new version in history db' , function(){
+      return User.create({ name: 'test' }).then(assertCount(UserHistory, 0));
+    });
     it('onUpdate/onDestroy: should save to the historyDB' , function(){
       return User.create()
       .then(assertCount(UserHistory,0))
@@ -231,4 +247,92 @@ describe('Read-only API', function(){
     });
 
   });
-})
+
+  describe('full mode', function() {
+
+    beforeEach(freshDBWithFullModeAndParanoid);
+
+    it('onCreate: should store the new version in history db' , function(){
+      return User.create({ name: 'test' })
+        .then(function() {
+          return UserHistory.findAll();
+        })
+        .then(function(histories) {
+          assert.equal(1, histories.length);
+          assert.equal('test', histories[0].name);
+        });
+    });
+
+    it('onUpdate: should store the new version to the historyDB' , function(){
+      return User.create({ name: 'test' })
+        .then(function(user) {
+          return user.update({ name: 'renamed' });
+        })
+        .then(function() {
+          return UserHistory.findAll();
+        })
+        .then(function(histories) {
+          assert.equal(histories.length, 2, 'two entries in DB');
+          assert.equal(histories[0].name, 'test', 'first version saved');
+          assert.equal(histories[1].name, 'renamed', 'second version saved');
+        });
+    });
+
+    it('onDelete: should store the previous version to the historyDB' , function(){
+      return User.create({ name: 'test' })
+        .then(function(user) {
+          return user.update({ name: 'renamed' });
+        })
+        .then(function(user) {
+          return user.destroy();
+        })
+        .then(function() {
+          return UserHistory.findAll();
+        })
+        .then(function(histories) {
+          assert.equal(histories.length, 3, 'three entries in DB');
+          assert.equal(histories[0].name, 'test', 'first version saved');
+          assert.equal(histories[1].name, 'renamed', 'second version saved');
+          assert.notEqual(histories[2].deletedAt, null, 'deleted version saved');
+        });
+    });
+
+    it('onRestore: should store the new version to the historyDB' , function(){
+      return User.create({ name: 'test' })
+        .then(function(user) {
+          return user.destroy();
+        })
+        .then(function(user) {
+          return user.restore();
+        })
+        .then(function() {
+          return UserHistory.findAll();
+        })
+        .then(function(histories) {
+          assert.equal(histories.length, 3, 'three entries in DB');
+          assert.equal(histories[0].name, 'test', 'first version saved');
+          assert.notEqual(histories[1].deletedAt, null, 'deleted version saved');
+          assert.equal(histories[2].deletedAt, null, 'restored version saved');
+        });
+    });
+
+    it('should revert on failed transactions, even when using after hooks' , function(){
+      return sequelize.transaction()
+        .then(function(transaction) {
+          var options = { transaction: transaction };
+
+          return User.create({ name: 'test' }, options)
+            .then(function(user) {
+              return user.destroy(options);
+            })
+            .then(assertCount(UserHistory, 2, options))
+            .then(function() {
+              return transaction.rollback()
+            });
+        })
+        .then(assertCount(UserHistory,0));
+    });
+
+  });
+
+});
