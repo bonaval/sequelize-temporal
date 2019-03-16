@@ -8,7 +8,7 @@ var temporalDefaultOptions = {
 };
 
 var excludeAttributes = function(obj, attrsToExclude){
-  return _.omit(obj, attrsToExclude));
+  return _.omit(obj, attrsToExclude);
 }
 
 var Temporal = function(model, sequelize, temporalOptions){
