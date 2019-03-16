@@ -8,8 +8,7 @@ var temporalDefaultOptions = {
 };
 
 var excludeAttributes = function(obj, attrsToExclude){
-  // fancy way to exclude attributes
-  return _.omit(obj, _.partial(_.rearg(_.contains,0,2,1), attrsToExclude));
+  return _.omit(obj, attrsToExclude);
 }
 
 var Temporal = function(model, sequelize, temporalOptions){
@@ -75,7 +74,7 @@ var Temporal = function(model, sequelize, temporalOptions){
     if(!options.individualHooks){
       var queryAll = model.findAll({where: options.where, transaction: options.transaction}).then(function(hits){
         if(hits){
-          hits = _.pluck(hits, 'dataValues');
+          hits = _.map(hits, 'dataValues');
           return modelHistory.bulkCreate(hits, {transaction: options.transaction});
         }
       });
