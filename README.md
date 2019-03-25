@@ -1,14 +1,15 @@
-Temporal tables for Sequelize
-=============================
-(aka "Historical records")
+Historical tables for Sequelize
+===============================
 
-[![Build Status](https://travis-ci.org/bonaval/sequelize-temporal.svg?branch=master)](https://travis-ci.org/bonaval/sequelize-temporal) [![Dependency Status](https://david-dm.org/bonaval/sequelize-temporal.svg)](https://david-dm.org/bonaval/sequelize-temporal) [![NPM version](https://img.shields.io/npm/v/sequelize-temporal.svg)](https://www.npmjs.com/package/sequelize-temporal)
+Warning: this is a fork of [sequelize-temporal](https://github.com/bonaval/sequelize-temporal) that adds support for Sequelize 5.
+
+[![Build Status](https://travis-ci.org/opencollective/sequelize-historical.svg?branch=master)](https://travis-ci.org/opencollective/sequelize-historical) [![Dependency Status](https://david-dm.org/opencollective/sequelize-historical.svg)](https://david-dm.org/opencollective/sequelize-historical) [![NPM version](https://img.shields.io/npm/v/sequelize-historical.svg)](https://www.npmjs.com/package/sequelize-historical)
 
 
 What is it?
 -----------
 
-Temporal tables maintain __historical versions__ of data. Modifying operations (UPDATE, DELETE) on these tables don't cause permanent changes to entries, but create new versions of them. Hence this might be used to:
+Historical tables maintain __historical versions__ of data. Modifying operations (UPDATE, DELETE) on these tables don't cause permanent changes to entries, but create new versions of them. Hence this might be used to:
 
 - log changes (security/auditing)
 - undo functionalities
@@ -25,17 +26,17 @@ Installation
 ------------
 
 ```
-npm install sequelize-temporal
+npm install sequelize-historical
 ```
 
 How to use
 ----------
 
-### 1) Import `sequelize-temporal`
+### 1) Import `sequelize-historical`
 
 ```
 var Sequelize = require('sequelize');
-var Temporal = require('sequelize-temporal');
+var Historical = require('sequelize-historical');
 ```
 
 Create a sequelize instance and your models, e.g.
@@ -47,26 +48,26 @@ var sequelize = new Sequelize('', '', '', {
 });
 ```
 
-### 2) Add the *temporal* feature to your models
+### 2) Add the *historical* feature to your models
 
 ```
-var User = Temporal(sequelize.define('User'), sequelize);
+var User = Historical(sequelize.define('User'), sequelize);
 ```
 
-The output of `temporal` is its input model, so assigning it's output to your
+The output of `historical` is its input model, so assigning it's output to your
 Model is not necessary, hence it's just the lazy version of:
 
 ```
 var User = sequelize.define('User', {.types.}, {.options.}); // Sequelize Docu
-Temporal(User, sequelize);
+Historical(User, sequelize);
 ```
 
 Options
 -------
 
-The default syntax for `Temporal` is:
+The default syntax for `Historical` is:
 
-`Temporal(model, sequelizeInstance, options)`
+`Historical(model, sequelizeInstance, options)`
 
 whereas the options are listed here (with default value).
 
@@ -75,8 +76,8 @@ whereas the options are listed here (with default value).
   /* runs the insert within the sequelize hook chain, disable
   for increased performance without warranties */
   blocking: true,
-  /* By default sequelize-temporal persist only changes, and saves the previous state in the history table.
-  The "full" option saves all transactions into the temporal database
+  /* By default sequelize-historical persist only changes, and saves the previous state in the history table.
+  The "full" option saves all transactions into the historical database
   (i.e. this includes the latest state.)
    This allows to only query the hostory table to get the full history of an entity.
   */
