@@ -34,8 +34,8 @@
   "devDependencies": {
     "chai": "^4.2.0",
     "chai-as-promised": "^7.1.1",
-    "sqlite3": "^4.0.1"
     "mocha": "^6.0.2",
     "sequelize": "^5.2.1",
+    "sqlite3": "^4.0.6"
   }
 }
