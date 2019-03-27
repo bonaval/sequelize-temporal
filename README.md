@@ -3,7 +3,7 @@ Historical tables for Sequelize
 
 Warning: this is a fork of [sequelize-temporal](https://github.com/bonaval/sequelize-temporal) that adds support for Sequelize 5.
 
-[![Build Status](https://travis-ci.org/opencollective/sequelize-historical.svg?branch=master)](https://travis-ci.org/opencollective/sequelize-historical) [![Dependency Status](https://david-dm.org/opencollective/sequelize-historical.svg)](https://david-dm.org/opencollective/sequelize-historical) [![NPM version](https://img.shields.io/npm/v/sequelize-historical.svg)](https://www.npmjs.com/package/sequelize-historical)
+[![Build Status](https://travis-ci.org/opencollective/sequelize-historical.svg?branch=master)](https://travis-ci.org/opencollective/sequelize-historical) [![Dependency Status](https://david-dm.org/opencollective/sequelize-historical.svg)](https://david-dm.org/opencollective/sequelize-historical) [![NPM version](https://img.shields.io/npm/v/sequelize-historical.svg)](https://www.npmjs.com/package/sequelize-historical) [![Greenkeeper badge](https://badges.greenkeeper.io/opencollective/sequelize-historical.svg)](https://greenkeeper.io/)
 
 
 What is it?
