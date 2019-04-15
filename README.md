@@ -15,7 +15,7 @@ Historical tables maintain __historical versions__ of data. Modifying operations
 - undo functionalities
 - track interactions (customer support)
 
-Under the hood a history table with the same structure, but without constraints is created.
+Under the hood a history table with the same structure, but without constraints is created in the model (you will need to make sure the table is created in the database).
 
 The normal singular/plural naming scheme in Sequelize is used:
 
@@ -81,7 +81,17 @@ whereas the options are listed here (with default value).
   (i.e. this includes the latest state.)
    This allows to only query the hostory table to get the full history of an entity.
   */
-  full: false
+  full: false,
+  /* By default sequelize-historical will add 'History' to the historical Model name and 'Histories' to the historical table.
+  By updating the modelSuffix value, you can decide what the naming will be.
+  The value will be appended to the historical Model name and its plural will be appended to the historical tablename.
+
+  examples for table User:
+	  modelSuffix: '_Hist'  --> Historical Model Name: User_Hist  --> Historical Table Name: User_Hists  
+	  modelSuffix: 'Memory'  --> Historical Model Name: UserMemory  --> Historical Table Name: UserMemories
+	  modelSuffix: 'Pass'  --> Historical Model Name: UserPass  --> Historical Table Name: UserPasses
+  */
+  modelSuffix: 'History'
 ```
 
 Details

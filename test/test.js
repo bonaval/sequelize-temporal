@@ -8,31 +8,42 @@ var eventually = assert.eventually;
 
 describe('Read-only API', function(){
   var sequelize, User, UserHistory;
+  
+  function newDB(paranoid, options){
+	suffix = options && options.modelSuffix ? options.modelSuffix : 'History';	
+	options = options || {};
 
-  function freshDB(){
-    // overwrites the old SQLite DB
-    sequelize = new Sequelize('', '', '', {
-      dialect: 'sqlite',
-      storage: __dirname + '/.test.sqlite'
-    });
+	sequelize = new Sequelize('', '', '', {
+		dialect: 'sqlite',
+		storage: __dirname + '/.test.sqlite'
+	});	
+
     User = Temporal(sequelize.define('User', {
       name: Sequelize.TEXT
-    }), sequelize);
-    UserHistory = sequelize.models.UserHistory;
-    return sequelize.sync({ force: true });
+	}, {paranoid: paranoid || false}), sequelize, options);
+	
+	UserHistory = sequelize.models['User' + suffix];
+	return sequelize.sync({ force: true });
   }
 
-  function freshDBWithFullModeAndParanoid() {
-    sequelize = new Sequelize('', '', '', {
-      dialect: 'sqlite',
-      storage: __dirname + '/.test.sqlite'
-    });
-    User = Temporal(sequelize.define('User', {
-      name: Sequelize.TEXT
-    }, { paranoid: true }), sequelize, { full: true });
-    UserHistory = sequelize.models.UserHistory;
+  function freshDB(){
+	return newDB();
+  }
 
-    return sequelize.sync({ force: true });
+  function freshDBWithFullModeAndParanoid(){
+	return newDB(true,{ full: true });
+  }
+
+  function freshDBWithSuffixEndingWithT(){
+	return newDB(false,  { modelSuffix: '_Hist'});
+  }
+
+  function freshDBWithSuffixEndingWithY(){
+	return newDB(false,  { modelSuffix: 'Memory'});
+  }
+
+  function freshDBWithSuffixEndingWithS(){
+	return newDB(false,  { modelSuffix: 'Pass'});
   }
 
   function assertCount(modelHistory, n, opts){
@@ -44,6 +55,170 @@ describe('Read-only API', function(){
       });
     }
   }
+
+  //these tests are the same as hooks since the results should not change, even with a different model name
+  //Only added is to test for the model name
+  describe('test suffix ending in T', function(){
+    beforeEach(freshDBWithSuffixEndingWithT);
+    it('onCreate: should not store the new version in history db' , function(){
+      return User.create({ name: 'test' }).then(assertCount(UserHistory, 0));
+    });
+    it('onUpdate/onDestroy: should save to the historyDB' , function(){
+      return User.create()
+      .then(assertCount(UserHistory,0))
+      .then(function(user){
+        user.name = "foo";
+        return user.save();
+      }).then(assertCount(UserHistory,1))
+      .then(function(user){
+        return user.destroy();
+      }).then(assertCount(UserHistory,2))
+    });
+    it('onUpdate: should store the previous version to the historyDB' , function(){
+      return User.create({name: "foo"})
+      .then(assertCount(UserHistory,0))
+      .then(function(user){
+        user.name = "bar";
+        return user.save();
+      }).then(assertCount(UserHistory,1))
+      .then(function(){
+        return UserHistory.findAll();
+      }).then(function(users){
+        assert.equal(users.length,1, "only one entry in DB");
+        assert.equal(users[0].name, "foo", "previous entry saved");
+      }).then(function(user){
+        return User.findOne();
+      }).then(function(user){
+        return user.destroy();
+      }).then(assertCount(UserHistory,2))
+    });
+    it('onDelete: should store the previous version to the historyDB' , function(){
+      return User.create({name: "foo"})
+      .then(assertCount(UserHistory,0))
+      .then(function(user){
+        return user.destroy();
+      }).then(assertCount(UserHistory,1))
+      .then(function(){
+        return UserHistory.findAll();
+      }).then(function(users){
+        assert.equal(users.length,1, "only one entry in DB");
+        assert.equal(users[0].name, "foo", "previous entry saved");
+      });
+	});
+	it('onCreate: check the model is using the custom suffix' , function(){
+		return User.create({ name: 'test' }).then(function(){
+			assert.equal(UserHistory.name, User.name + '_Hist');
+		});
+	});
+  });
+
+  describe('test suffix ending in Y', function(){	
+    beforeEach(freshDBWithSuffixEndingWithY);
+    it('onCreate: should not store the new version in history db' , function(){
+      return User.create({ name: 'test' }).then(assertCount(UserHistory, 0));
+    });
+    it('onUpdate/onDestroy: should save to the historyDB' , function(){
+      return User.create()
+      .then(assertCount(UserHistory,0))
+      .then(function(user){
+        user.name = "foo";
+        return user.save();
+      }).then(assertCount(UserHistory,1))
+      .then(function(user){
+        return user.destroy();
+      }).then(assertCount(UserHistory,2))
+    });
+    it('onUpdate: should store the previous version to the historyDB' , function(){
+      return User.create({name: "foo"})
+      .then(assertCount(UserHistory,0))
+      .then(function(user){
+        user.name = "bar";
+        return user.save();
+      }).then(assertCount(UserHistory,1))
+      .then(function(){
+        return UserHistory.findAll();
+      }).then(function(users){
+        assert.equal(users.length,1, "only one entry in DB");
+        assert.equal(users[0].name, "foo", "previous entry saved");
+      }).then(function(user){
+        return User.findOne();
+      }).then(function(user){
+        return user.destroy();
+      }).then(assertCount(UserHistory,2))
+    });
+    it('onDelete: should store the previous version to the historyDB' , function(){
+      return User.create({name: "foo"})
+      .then(assertCount(UserHistory,0))
+      .then(function(user){
+        return user.destroy();
+      }).then(assertCount(UserHistory,1))
+      .then(function(){
+        return UserHistory.findAll();
+      }).then(function(users){
+        assert.equal(users.length,1, "only one entry in DB");
+        assert.equal(users[0].name, "foo", "previous entry saved");
+      });
+	});
+	it('onCreate: check the model is using the custom suffix' , function(){
+		return User.create({ name: 'test' }).then(function(){
+			assert.equal(UserHistory.name, User.name + 'Memory');
+		});
+	});
+  });
+
+  describe('test suffix ending in S', function(){	
+    beforeEach(freshDBWithSuffixEndingWithS);
+    it('onCreate: should not store the new version in history db' , function(){
+      return User.create({ name: 'test' }).then(assertCount(UserHistory, 0));
+    });
+    it('onUpdate/onDestroy: should save to the historyDB' , function(){
+      return User.create()
+      .then(assertCount(UserHistory,0))
+      .then(function(user){
+        user.name = "foo";
+        return user.save();
+      }).then(assertCount(UserHistory,1))
+      .then(function(user){
+        return user.destroy();
+      }).then(assertCount(UserHistory,2))
+    });
+    it('onUpdate: should store the previous version to the historyDB' , function(){
+      return User.create({name: "foo"})
+      .then(assertCount(UserHistory,0))
+      .then(function(user){
+        user.name = "bar";
+        return user.save();
+      }).then(assertCount(UserHistory,1))
+      .then(function(){
+        return UserHistory.findAll();
+      }).then(function(users){
+        assert.equal(users.length,1, "only one entry in DB");
+        assert.equal(users[0].name, "foo", "previous entry saved");
+      }).then(function(user){
+        return User.findOne();
+      }).then(function(user){
+        return user.destroy();
+      }).then(assertCount(UserHistory,2))
+    });
+    it('onDelete: should store the previous version to the historyDB' , function(){
+      return User.create({name: "foo"})
+      .then(assertCount(UserHistory,0))
+      .then(function(user){
+        return user.destroy();
+      }).then(assertCount(UserHistory,1))
+      .then(function(){
+        return UserHistory.findAll();
+      }).then(function(users){
+        assert.equal(users.length,1, "only one entry in DB");
+        assert.equal(users[0].name, "foo", "previous entry saved");
+      });
+	});
+	it('onCreate: check the model is using the custom suffix' , function(){
+		return User.create({ name: 'test' }).then(function(){
+			assert.equal(UserHistory.name, User.name + 'Pass');
+		});
+	});
+  });
 
   describe('hooks', function(){
     beforeEach(freshDB);
@@ -329,7 +504,6 @@ describe('Read-only API', function(){
         })
         .then(assertCount(UserHistory,0));
     });
-
-  });
+  });  
 
 });

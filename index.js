@@ -4,7 +4,8 @@ var temporalDefaultOptions = {
   // runs the insert within the sequelize hook chain, disable
   // for increased performance
   blocking: true,
-  full: false
+  full: false,
+  modelSuffix: 'History'
 };
 
 var excludeAttributes = function(obj, attrsToExclude){
@@ -17,7 +18,7 @@ var Temporal = function(model, sequelize, temporalOptions){
 
   var Sequelize = sequelize.Sequelize;
 
-  var historyName = model.name + 'History';
+  var historyName = model.name + temporalOptions.modelSuffix;
   //var historyName = model.getTableName() + 'History';
   //var historyName = model.options.name.singular + 'History';
 
