@@ -15,7 +15,7 @@ Historical tables maintain __historical versions__ of data. Modifying operations
 - undo functionalities
 - track interactions (customer support)
 
-Under the hood a history table with the same structure, but without constraints is created in the model.
+Under the hood a history table with the same structure, but without constraints is created.
 
 The normal singular/plural naming scheme in Sequelize is used:
 
