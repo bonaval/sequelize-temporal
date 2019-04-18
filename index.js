@@ -1,11 +1,19 @@
 var _ = require('lodash');
 
+const relations = {
+	DISABLED: 0,
+	ORIGIN: 1,
+	HISTORY: 2
+}
+
+//TODO add options to keep no foreign key associations to historical to get associated models (add secondary option to select keep linked to current or to historical)
 var temporalDefaultOptions = {
   // runs the insert within the sequelize hook chain, disable
   // for increased performance
   blocking: true,
   full: false,
-  modelSuffix: 'History'
+  modelSuffix: 'History',
+  keepRelations: relations.DISABLED
 };
 
 var excludeAttributes = function(obj, attrsToExclude){
@@ -19,8 +27,6 @@ var Temporal = function(model, sequelize, temporalOptions){
   var Sequelize = sequelize.Sequelize;
 
   var historyName = model.name + temporalOptions.modelSuffix;
-  //var historyName = model.getTableName() + 'History';
-  //var historyName = model.options.name.singular + 'History';
 
   var historyOwnAttrs = {
     hid: {
@@ -37,7 +43,7 @@ var Temporal = function(model, sequelize, temporalOptions){
   };
 
   var excludedAttributes = ["Model","unique","primaryKey","autoIncrement", "set", "get", "_modelAttribute"];
-  var historyAttributes = _(model.rawAttributes).mapValues(function(v){
+  var historyAttributes = _(model.rawAttributes).mapValues(function(v){	
     v = excludeAttributes(v, excludedAttributes);
     // remove the "NOW" defaultValue for the default timestamps
     // we want to save them, but just a copy from our master record
@@ -86,6 +92,59 @@ var Temporal = function(model, sequelize, temporalOptions){
     }
   }
 
+  var afterBulkSyncHook = function(options){		
+	sequelize.removeHook('beforeBulkSync', 'TemporalBulkSyncHook');
+	sequelize.removeHook('afterBulkSync', 'TemporalBulkSyncHook');
+	return Promise.resolve('Temporal Hooks Removed');
+  }
+  
+
+  var beforeBulkSyncHook = function(options){
+    const allModels = sequelize.models;
+	Object.keys(allModels).forEach(key => {
+		const model = allModels[key];														
+		if(!model.name.endsWith(temporalOptions.modelSuffix) && model.associations)	{		
+			Object.keys(model.associations).forEach(key => {				
+				const source = model;	
+				const association = model.associations[key];				
+				const target = association.target;
+				
+				const sourceHistName = source.name + temporalOptions.modelSuffix;
+				const sourceHist = allModels[sourceHistName];
+
+				const targetHistName = target.name + temporalOptions.modelSuffix;						
+				const targetHist = allModels[targetHistName];
+				const tableName = source.name + target.name;
+
+				if(sourceHist.keepRelations == relations.HISTORY) {					
+					//TODO FIX relations table not having entries
+					//TODO add options to belongsToMany
+					//TODO remove"through" from options since we're adding it
+					//TODO test with several associations
+					//TODO test with several associations to the same table i.e: addedBy, UpdatedBy
+
+					if(!sourceHist.associations[targetHist.tableName])
+					{
+						sourceHist.belongsToMany(targetHist, {through: tableName});
+						targetHist.belongsToMany(sourceHist, {through: tableName});
+					}
+				}
+
+				if(sourceHist.keepRelations == relations.ORIGIN) {
+					const assocName = association.associationType.charAt(0).toLowerCase() + association.associationType.substr(1);
+					sourceHist[assocName].apply(sourceHist, [target, association.options]);
+				}					
+
+				sequelize.models[sourceHistName] = sourceHist;	
+				sequelize.models[sourceHistName].sync();
+								
+			});			
+		}		
+	}); 
+
+	return Promise.resolve('Temporal associations established');
+  }
+  
   // use `after` to be nonBlocking
   // all hooks just create a copy
   if (temporalOptions.full) {
@@ -108,6 +167,15 @@ var Temporal = function(model, sequelize, temporalOptions){
   modelHistory.addHook('beforeUpdate', readOnlyHook);
   modelHistory.addHook('beforeDestroy', readOnlyHook);
 
+  sequelize.removeHook('beforeBulkSync', 'TemporalBulkSyncHook');//remove first to avoid duplicating
+  sequelize.removeHook('afterBulkSync', 'TemporalBulkSyncHook');//remove first to avoid duplicating  
+  sequelize.addHook('afterBulkSync', 'TemporalBulkSyncHook', afterBulkSyncHook);	
+  sequelize.addHook('beforeBulkSync', 'TemporalBulkSyncHook', beforeBulkSyncHook);	
+
+//   sequelize.removeHook('afterBulkSync', 'TemporalBulkSyncHook');//remove first to avoid duplicating  
+//   sequelize.addHook('afterBulkSync', 'TemporalBulkSyncHook', beforeBulkSyncHook);	
+
+  modelHistory.keepRelations = temporalOptions.keepRelations;  
   return model;
 };
 

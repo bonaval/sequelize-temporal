@@ -7,7 +7,7 @@ var assert = chai.assert;
 var eventually = assert.eventually;
 
 describe('Read-only API', function(){
-  var sequelize, User, UserHistory;
+  var sequelize, User, UserHistory, Creation, CreationHistory;
   
   function newDB(paranoid, options){
 	suffix = options && options.modelSuffix ? options.modelSuffix : 'History';	
@@ -18,16 +18,40 @@ describe('Read-only API', function(){
 		storage: __dirname + '/.test.sqlite'
 	});	
 
-    User = Temporal(sequelize.define('User', {
-      name: Sequelize.TEXT
-	}, {paranoid: paranoid || false}), sequelize, options);
-	
+	//create 2 models and their historical models to test associations
+	User = sequelize.define('User', {
+		name: Sequelize.TEXT	  
+	  }, {paranoid: paranoid || false});
+
+	Creation = sequelize.define('Creation', {		
+		name: Sequelize.TEXT,
+		user: Sequelize.INTEGER,
+	}, {paranoid: paranoid || false});	
+
+	//associate the 2 models together	
+	User.hasMany(Creation, { foreignKey: 'user' });
+	Creation.belongsTo(User, { foreignKey: 'user' });	
+
+	//Temporalize
+	User = Temporal(User, sequelize, options);
+	Creation = Temporal(Creation, sequelize, options);		
+		
 	UserHistory = sequelize.models['User' + suffix];
+	CreationHistory = sequelize.models['Creation' + suffix];
+
 	return sequelize.sync({ force: true });
   }
 
   function freshDB(){
 	return newDB();
+  }
+
+  function freshDBWithOriginRelations(){
+	return newDB(false,  { keepRelations: 1});
+  }
+
+  function freshDBWithHistoricalRelations(){
+	return newDB(false,  { keepRelations: 2});
   }
 
   function freshDBWithFullModeAndParanoid(){
@@ -55,6 +79,100 @@ describe('Read-only API', function(){
       });
     }
   }
+
+  describe.only('Association Tests', function(){
+		describe('test there are no historical association', function(){
+			beforeEach(freshDB);
+			it('onCreate: should have relations for origin models but not for historical models' , function(){
+				return User.create({ name: 'test' }).then( u => {
+					assert.exists(u.id);	
+					u.name = 'test renamed';
+					u.save();			
+					return Creation.create({ name: 'test', user: u.id });
+				}).then(c => {
+					assert.exists(c.id);
+					c.name = 'creation renamed';
+					c.save();
+					return c.getUser();				
+				}).then( u => {
+					assert.exists(u.id);
+					assertCount(UserHistory, 1);
+					assertCount(CreationHistory, 1);		
+					
+					return CreationHistory.findOne();
+				}).then( c => {
+					assert.exists(c.id);	
+					assert.isUndefined(c.getUser);			
+				});
+			});
+		});
+
+		describe('test there are historical associations to origin models', function(){
+			beforeEach(freshDBWithOriginRelations);
+			it('onCreate: should have relations for origin models and for historical models to origin' , function(){
+				return User.create({ name: 'test' }).then( u => {
+					assert.exists(u.id);	
+					u.name = 'test renamed';
+					u.save();			
+					return Creation.create({ name: 'test', user: u.id });
+				}).then(c => {
+					assert.exists(c.id);
+					c.name = 'creation renamed';
+					c.save();
+					return c.getUser();				
+				}).then( u => {
+					assert.exists(u.id);
+					assertCount(UserHistory, 1);
+					assertCount(CreationHistory, 1);		
+					
+					return CreationHistory.findOne();
+				}).then( c => {
+					assert.exists(c.id);	
+					assert.exists(c.getUser);	
+					assert.notExists(c.getUsers);
+					
+					return c.getUser();
+				}).then( u => {
+					assert.exists(u.id);
+				});
+			});
+		});
+
+		describe('test there are historical associations to historical models', function(){
+			beforeEach(freshDBWithHistoricalRelations);
+			it('onCreate: should have relations for origin models and for historical models to historical' , function(){
+				return User.create({ name: 'test' }).then( u => {
+					assert.exists(u.id);	
+					u.name = 'test renamed';
+					u.save();	
+					u.name = 'test renamed twice';
+					u.save();			
+					u.name = 'test renamed three times';
+					u.save();	
+					return Creation.create({ name: 'test', user: u.id });
+				}).then(c => {
+					assert.exists(c.id);
+					c.name = 'creation renamed';
+					c.save();
+					return c.getUser();				
+				}).then( u => {
+					assert.exists(u.id);
+					assertCount(UserHistory, 3);
+					assertCount(CreationHistory, 1);		
+					
+					return CreationHistory.findOne();
+				}).then( c => {
+					assert.exists(c.id);	
+					assert.notExists(c.getUser);	
+					assert.exists(c.getUsers);
+					
+					return c.getUsers();
+				}).then( u => {
+					assert.equal(u.length, 3);
+				});
+			});
+		});
+	});
 
   //these tests are the same as hooks since the results should not change, even with a different model name
   //Only added is to test for the model name
