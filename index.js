@@ -13,7 +13,7 @@ var temporalDefaultOptions = {
   blocking: true,
   full: false,
   modelSuffix: 'History',
-  keepRelations: relations.DISABLED
+  addAssociations: false
 };
 
 var excludeAttributes = function(obj, attrsToExclude){
@@ -116,23 +116,18 @@ var Temporal = function(model, sequelize, temporalOptions){
 				const targetHist = allModels[targetHistName];
 				const tableName = source.name + target.name;
 
-				if(sourceHist.keepRelations == relations.HISTORY) {					
-					//TODO FIX relations table not having entries
-					//TODO add options to belongsToMany
-					//TODO remove"through" from options since we're adding it
+				if(sourceHist.addAssociations == true) {
 					//TODO test with several associations
 					//TODO test with several associations to the same table i.e: addedBy, UpdatedBy
+					//TODO test with all 1.*, 1.1, *.*
 
-					if(!sourceHist.associations[targetHist.tableName])
-					{			
-						sourceHist.belongsToMany(targetHist, {through: tableName});
-						targetHist.belongsToMany(sourceHist, {through: tableName});						
-					}
-				}
-
-				if(sourceHist.keepRelations == relations.ORIGIN) {
+					//adding associations from historical model to origin model's association
 					const assocName = association.associationType.charAt(0).toLowerCase() + association.associationType.substr(1);
 					sourceHist[assocName].apply(sourceHist, [target, association.options]);
+
+					//adding associations between origin model and historical					
+					source.hasMany(sourceHist, { foreignKey: source.primaryKeyField });
+					sourceHist.belongsTo(source, { foreignKey: source.primaryKeyField });
 				}					
 
 				sequelize.models[sourceHistName] = sourceHist;	
@@ -172,7 +167,7 @@ var Temporal = function(model, sequelize, temporalOptions){
   sequelize.addHook('afterBulkSync', 'TemporalBulkSyncHook', afterBulkSyncHook);	
   sequelize.addHook('beforeBulkSync', 'TemporalBulkSyncHook', beforeBulkSyncHook);	
 
-  modelHistory.keepRelations = temporalOptions.keepRelations;  
+  modelHistory.addAssociations = temporalOptions.addAssociations;  
   return model;
 };
 

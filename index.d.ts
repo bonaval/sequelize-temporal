@@ -1,15 +1,9 @@
 declare module 'sequelize-temporal' { 
-	enum relations {
-		DISABLED,
-		ORIGIN,
-		HISTORY
-	}
-	
 	interface Options { 
 		blocking?:boolean,
 		full?:boolean,
 		modelSuffix?:string,
-		keepRelations?:relations,
+		addAssociations?:boolean,
 	}
 
 	function output<T>(define:T, sequelize:any, options?:Options): T
