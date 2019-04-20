@@ -124,9 +124,9 @@ var Temporal = function(model, sequelize, temporalOptions){
 					//TODO test with several associations to the same table i.e: addedBy, UpdatedBy
 
 					if(!sourceHist.associations[targetHist.tableName])
-					{
+					{			
 						sourceHist.belongsToMany(targetHist, {through: tableName});
-						targetHist.belongsToMany(sourceHist, {through: tableName});
+						targetHist.belongsToMany(sourceHist, {through: tableName});						
 					}
 				}
 
@@ -171,9 +171,6 @@ var Temporal = function(model, sequelize, temporalOptions){
   sequelize.removeHook('afterBulkSync', 'TemporalBulkSyncHook');//remove first to avoid duplicating  
   sequelize.addHook('afterBulkSync', 'TemporalBulkSyncHook', afterBulkSyncHook);	
   sequelize.addHook('beforeBulkSync', 'TemporalBulkSyncHook', beforeBulkSyncHook);	
-
-//   sequelize.removeHook('afterBulkSync', 'TemporalBulkSyncHook');//remove first to avoid duplicating  
-//   sequelize.addHook('afterBulkSync', 'TemporalBulkSyncHook', beforeBulkSyncHook);	
 
   modelHistory.keepRelations = temporalOptions.keepRelations;  
   return model;
