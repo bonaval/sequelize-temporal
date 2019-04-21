@@ -1,12 +1,5 @@
 var _ = require('lodash');
 
-const relations = {
-	DISABLED: 0,
-	ORIGIN: 1,
-	HISTORY: 2
-}
-
-//TODO add options to keep no foreign key associations to historical to get associated models (add secondary option to select keep linked to current or to historical)
 var temporalDefaultOptions = {
   // runs the insert within the sequelize hook chain, disable
   // for increased performance
@@ -102,38 +95,27 @@ var Temporal = function(model, sequelize, temporalOptions){
   var beforeBulkSyncHook = function(options){
     const allModels = sequelize.models;
 	Object.keys(allModels).forEach(key => {
-		const model = allModels[key];														
-		if(!model.name.endsWith(temporalOptions.modelSuffix) && model.associations)	{		
-			Object.keys(model.associations).forEach(key => {				
-				const source = model;	
-				const association = model.associations[key];				
+		const source = allModels[key];	
+		const sourceHistName = source.name + temporalOptions.modelSuffix;
+		const sourceHist = allModels[sourceHistName];
+
+		if(!source.name.endsWith(temporalOptions.modelSuffix) && source.associations && temporalOptions.addAssociations == true && sourceHist) {
+			//adding associations from historical model to origin model's association
+			Object.keys(source.associations).forEach(key => {			
+				const association = source.associations[key];				
 				const target = association.target;
-				
-				const sourceHistName = source.name + temporalOptions.modelSuffix;
-				const sourceHist = allModels[sourceHistName];
+				const assocName = association.associationType.charAt(0).toLowerCase() + association.associationType.substr(1);
+				sourceHist[assocName].apply(sourceHist, [target, association.options]);
 
-				const targetHistName = target.name + temporalOptions.modelSuffix;						
-				const targetHist = allModels[targetHistName];
-				const tableName = source.name + target.name;
+				//TODO test with several associations to the same table i.e: addedBy, UpdatedBy
+			});
 
-				if(sourceHist.addAssociations == true) {
-					//TODO test with several associations
-					//TODO test with several associations to the same table i.e: addedBy, UpdatedBy
-					//TODO test with all 1.*, 1.1, *.*
-
-					//adding associations from historical model to origin model's association
-					const assocName = association.associationType.charAt(0).toLowerCase() + association.associationType.substr(1);
-					sourceHist[assocName].apply(sourceHist, [target, association.options]);
-
-					//adding associations between origin model and historical					
-					source.hasMany(sourceHist, { foreignKey: source.primaryKeyField });
-					sourceHist.belongsTo(source, { foreignKey: source.primaryKeyField });
-				}					
-
-				sequelize.models[sourceHistName] = sourceHist;	
-				sequelize.models[sourceHistName].sync();
-								
-			});			
+			//adding associations between origin model and historical					
+			source.hasMany(sourceHist, { foreignKey: source.primaryKeyField });
+			sourceHist.belongsTo(source, { foreignKey: source.primaryKeyField });	
+			
+			sequelize.models[sourceHistName] = sourceHist;	
+			sequelize.models[sourceHistName].sync();
 		}		
 	}); 
 
