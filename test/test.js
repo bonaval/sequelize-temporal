@@ -43,8 +43,8 @@ describe('Read-only API', function(){
 		Creation.hasOne(Event, { foreignKey: 'creation' });
 		
 		//*.*
-		Tag.belongsToMany(Creation, { through: CreationTag, foreignKey: 'creation', otherKey: 'tag' });
-		Creation.belongsToMany(Tag, { through: CreationTag, foreignKey: 'tag', otherKey: 'creation' });
+		Tag.belongsToMany(Creation, { through: CreationTag, foreignKey: 'tag', otherKey: 'creation' });
+		Creation.belongsToMany(Tag, { through: CreationTag, foreignKey: 'creation', otherKey: 'tag' });
 
 		//Temporalize
 		Temporal(User, sequelize, options);
@@ -251,7 +251,7 @@ describe('Read-only API', function(){
 		}
 	}
 
-	describe.only('Association Tests', function() {
+	describe('Association Tests', function() {
 		describe('test there are no historical association', function(){
 			beforeEach(freshDB);
 			it('Should have relations for origin models but not for historical models' , function(){
@@ -361,7 +361,7 @@ describe('Read-only API', function(){
 			});
 		});
 
-		describe.only('test there are associations are created between origin and historical', function(){
+		describe('test there are associations are created between origin and historical', function(){
 			beforeEach(freshDBWithAssociations);
 			it('Should have relations for origin models and for historical models to origin' , function(){
 				const init = dataCreate();

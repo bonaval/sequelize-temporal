@@ -9,14 +9,7 @@ var temporalDefaultOptions = {
   addAssociations: false
 };
 
-var excludeAttributes = function(obj, attrsToExclude){
-  // fancy way to exclude attributes
-  return _.omit(obj, _.partial(_.rearg(_.contains,0,2,1), attrsToExclude));
-}
-
-
-
-var Temporal = function(model, sequelize, temporalOptions){
+var Temporal = function(model, sequelize, temporalOptions) {
   temporalOptions = _.extend({},temporalDefaultOptions, temporalOptions);
 
   var Sequelize = sequelize.Sequelize;
@@ -39,7 +32,7 @@ var Temporal = function(model, sequelize, temporalOptions){
 
   var excludedAttributes = ["Model","unique","primaryKey","autoIncrement", "set", "get", "_modelAttribute"];
   var historyAttributes = _(model.rawAttributes).mapValues(function(v){	
-    v = excludeAttributes(v, excludedAttributes);
+    v = _.omit(v, excludedAttributes);
     // remove the "NOW" defaultValue for the default timestamps
     // we want to save them, but just a copy from our master record
     if(v.fieldName == "createdAt" || v.fieldName == "updatedAt"){
@@ -54,7 +47,7 @@ var Temporal = function(model, sequelize, temporalOptions){
     timestamps: false
   };
   var excludedNames = ["name", "tableName", "sequelize", "uniqueKeys", "hasPrimaryKey", "hooks", "scopes", "instanceMethods", "defaultScope"];
-  var modelOptions = excludeAttributes(model.options, excludedNames);
+  var modelOptions = _.omit(model.options, excludedNames);
   var historyOptions = _.assign({}, modelOptions, historyOwnOptions);
   
   // We want to delete indexes that have unique constraint
@@ -94,18 +87,8 @@ var Temporal = function(model, sequelize, temporalOptions){
   }
   
 
-  var beforeBulkSyncHook = function(options){
-	const customizer = function (objValue, srcValue, key, obj, src) {
-		if(key == 'hid') 
-			obj.primaryKey = false;
-		else 
-			obj.autoIncrement = false;
-	
-		return obj;
-	}
-
+  var beforeBulkSyncHook = function(options){	  
 	const allModels = sequelize.models;
-	const mergePKs = _.partialRight(_.assignWith, customizer);
 
 	Object.keys(allModels).forEach(key => {
 		const source = allModels[key];	
@@ -121,12 +104,11 @@ var Temporal = function(model, sequelize, temporalOptions){
 				const assocName = association.associationType.charAt(0).toLowerCase() + association.associationType.substr(1);				
 
 				//handle premary keys for belongsToMany
-				if(assocName == 'belongsToMany') {									
-					sourceHist.primaryKeys = mergePKs({}, sourceHist.primaryKeys, source.primaryKeys);
-					sourceHist.primaryKeys.hid.primaryKey = false;
-					sourceHist.primaryKeys[pkfield].autoIncrement = false;
+				if(assocName == 'belongsToMany') {								
+					sourceHist.primaryKeys = _.forEach(source.primaryKeys, (x) => x.autoIncrement = false);
+					sourceHist.primaryKeyField = Object.keys(sourceHist.primaryKeys)[0];
 				}
-
+				
 				sourceHist[assocName].apply(sourceHist, [target, association.options]);
 
 				//TODO test with several associations to the same table i.e: addedBy, UpdatedBy
