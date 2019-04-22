@@ -14,6 +14,8 @@ var excludeAttributes = function(obj, attrsToExclude){
   return _.omit(obj, _.partial(_.rearg(_.contains,0,2,1), attrsToExclude));
 }
 
+
+
 var Temporal = function(model, sequelize, temporalOptions){
   temporalOptions = _.extend({},temporalDefaultOptions, temporalOptions);
 
@@ -75,7 +77,7 @@ var Temporal = function(model, sequelize, temporalOptions){
     if(!options.individualHooks){
       var queryAll = model.findAll({where: options.where, transaction: options.transaction}).then(function(hits){
         if(hits){
-          hits = _.pluck(hits, 'dataValues');
+          hits = _.map(hits, 'dataValues');
           return modelHistory.bulkCreate(hits, {transaction: options.transaction});
         }
       });
@@ -93,26 +95,46 @@ var Temporal = function(model, sequelize, temporalOptions){
   
 
   var beforeBulkSyncHook = function(options){
-    const allModels = sequelize.models;
+	const customizer = function (objValue, srcValue, key, obj, src) {
+		if(key == 'hid') 
+			obj.primaryKey = false;
+		else 
+			obj.autoIncrement = false;
+	
+		return obj;
+	}
+
+	const allModels = sequelize.models;
+	const mergePKs = _.partialRight(_.assignWith, customizer);
+
 	Object.keys(allModels).forEach(key => {
 		const source = allModels[key];	
 		const sourceHistName = source.name + temporalOptions.modelSuffix;
 		const sourceHist = allModels[sourceHistName];
 
 		if(!source.name.endsWith(temporalOptions.modelSuffix) && source.associations && temporalOptions.addAssociations == true && sourceHist) {
+			const pkfield = source.primaryKeyField;
 			//adding associations from historical model to origin model's association
 			Object.keys(source.associations).forEach(key => {			
 				const association = source.associations[key];				
 				const target = association.target;
-				const assocName = association.associationType.charAt(0).toLowerCase() + association.associationType.substr(1);
+				const assocName = association.associationType.charAt(0).toLowerCase() + association.associationType.substr(1);				
+
+				//handle premary keys for belongsToMany
+				if(assocName == 'belongsToMany') {									
+					sourceHist.primaryKeys = mergePKs({}, sourceHist.primaryKeys, source.primaryKeys);
+					sourceHist.primaryKeys.hid.primaryKey = false;
+					sourceHist.primaryKeys[pkfield].autoIncrement = false;
+				}
+
 				sourceHist[assocName].apply(sourceHist, [target, association.options]);
 
 				//TODO test with several associations to the same table i.e: addedBy, UpdatedBy
 			});
 
 			//adding associations between origin model and historical					
-			source.hasMany(sourceHist, { foreignKey: source.primaryKeyField });
-			sourceHist.belongsTo(source, { foreignKey: source.primaryKeyField });	
+			source.hasMany(sourceHist, { foreignKey: pkfield });
+			sourceHist.belongsTo(source, { foreignKey: pkfield });	
 			
 			sequelize.models[sourceHistName] = sourceHist;	
 			sequelize.models[sourceHistName].sync();
