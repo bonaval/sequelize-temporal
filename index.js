@@ -1,22 +1,22 @@
 var _ = require('lodash');
 
-var temporalDefaultOptions = {
+var recordDefaultOptions = {
   // runs the insert within the sequelize hook chain, disable
   // for increased performance
   blocking: true,
   full: false,
-  modelSuffix: 'History',
+  modelSuffix: 'Record',
   addAssociations: false
 };
 
-var Temporal = function(model, sequelize, temporalOptions) {
-  temporalOptions = _.extend({},temporalDefaultOptions, temporalOptions);
+var Record = function(model, sequelize, recordOptions) {
+  recordOptions = _.extend({},recordDefaultOptions, recordOptions);
 
   var Sequelize = sequelize.Sequelize;
 
-  var historyName = model.name + temporalOptions.modelSuffix;
+  var recordName = model.name + recordOptions.modelSuffix;
 
-  var historyOwnAttrs = {
+  var recordOwnAttrs = {
     hid: {
       type:          Sequelize.BIGINT,
       primaryKey:    true,
@@ -31,7 +31,7 @@ var Temporal = function(model, sequelize, temporalOptions) {
   };
 
   var excludedAttributes = ["Model","unique","primaryKey","autoIncrement", "set", "get", "_modelAttribute"];
-  var historyAttributes = _(model.rawAttributes).mapValues(function(v){	
+  var recordAttributes = _(model.rawAttributes).mapValues(function(v){	
     v = _.omit(v, excludedAttributes);
     // remove the "NOW" defaultValue for the default timestamps
     // we want to save them, but just a copy from our master record
@@ -39,31 +39,31 @@ var Temporal = function(model, sequelize, temporalOptions) {
       v.type = Sequelize.DATE;
     }
     return v;
-  }).assign(historyOwnAttrs).value();
+  }).assign(recordOwnAttrs).value();
   // If the order matters, use this:
-  //historyAttributes = _.assign({}, historyOwnAttrs, historyAttributes);
+  //recordAttributes = _.assign({}, recordOwnAttrs, recordAttributes);
 
-  var historyOwnOptions = {
+  var recordOwnOptions = {
     timestamps: false
   };
   var excludedNames = ["name", "tableName", "sequelize", "uniqueKeys", "hasPrimaryKey", "hooks", "scopes", "instanceMethods", "defaultScope"];
   var modelOptions = _.omit(model.options, excludedNames);
-  var historyOptions = _.assign({}, modelOptions, historyOwnOptions);
+  var recordModelOptions = _.assign({}, modelOptions, recordOwnOptions);
   
   // We want to delete indexes that have unique constraint
-  var indexes = historyOptions.indexes;
+  var indexes = recordModelOptions.indexes;
   if(Array.isArray(indexes)){
-     historyOptions.indexes = indexes.filter(function(index){return !index.unique && index.type != 'UNIQUE';});
+     recordModelOptions.indexes = indexes.filter(function(index){return !index.unique && index.type != 'UNIQUE';});
   }
 
-  var modelHistory = sequelize.define(historyName, historyAttributes, historyOptions);
+  var modelRecord = sequelize.define(recordName, recordAttributes, recordModelOptions);
 
   // we already get the updatedAt timestamp from our models
   var insertHook = function(obj, options){
-    var dataValues = (!temporalOptions.full && obj._previousDataValues) || obj.dataValues;
-    var historyRecord = modelHistory.create(dataValues, {transaction: options.transaction});
-    if(temporalOptions.blocking){
-      return historyRecord;
+    var dataValues = (!recordOptions.full && obj._previousDataValues) || obj.dataValues;
+    var recordRecord = modelRecord.create(dataValues, {transaction: options.transaction});
+    if(recordOptions.blocking){
+      return recordRecord;
     }
   }
   var insertBulkHook = function(options){
@@ -71,19 +71,19 @@ var Temporal = function(model, sequelize, temporalOptions) {
       var queryAll = model.findAll({where: options.where, transaction: options.transaction}).then(function(hits){
         if(hits){
           hits = _.map(hits, 'dataValues');
-          return modelHistory.bulkCreate(hits, {transaction: options.transaction});
+          return modelRecord.bulkCreate(hits, {transaction: options.transaction});
         }
       });
-      if(temporalOptions.blocking){
+      if(recordOptions.blocking){
         return queryAll;
       }
     }
   }
 
   var afterBulkSyncHook = function(options){		
-	sequelize.removeHook('beforeBulkSync', 'TemporalBulkSyncHook');
-	sequelize.removeHook('afterBulkSync', 'TemporalBulkSyncHook');
-	return Promise.resolve('Temporal Hooks Removed');
+	sequelize.removeHook('beforeBulkSync', 'RecordBulkSyncHook');
+	sequelize.removeHook('afterBulkSync', 'RecordBulkSyncHook');
+	return Promise.resolve('Record Hooks Removed');
   }
   
 
@@ -92,12 +92,12 @@ var Temporal = function(model, sequelize, temporalOptions) {
 
 	Object.keys(allModels).forEach(key => {
 		const source = allModels[key];	
-		const sourceHistName = source.name + temporalOptions.modelSuffix;
+		const sourceHistName = source.name + recordOptions.modelSuffix;
 		const sourceHist = allModels[sourceHistName];
 
-		if(!source.name.endsWith(temporalOptions.modelSuffix) && source.associations && temporalOptions.addAssociations == true && sourceHist) {
+		if(!source.name.endsWith(recordOptions.modelSuffix) && source.associations && recordOptions.addAssociations == true && sourceHist) {
 			const pkfield = source.primaryKeyField;
-			//adding associations from historical model to origin model's association
+			//adding associations from record model to origin model's association
 			Object.keys(source.associations).forEach(key => {			
 				const association = source.associations[key];				
 				const target = association.target;
@@ -114,7 +114,7 @@ var Temporal = function(model, sequelize, temporalOptions) {
 				//TODO test with several associations to the same table i.e: addedBy, UpdatedBy
 			});
 
-			//adding associations between origin model and historical					
+			//adding associations between origin model and record					
 			source.hasMany(sourceHist, { foreignKey: pkfield });
 			sourceHist.belongsTo(source, { foreignKey: pkfield });	
 			
@@ -123,12 +123,12 @@ var Temporal = function(model, sequelize, temporalOptions) {
 		}		
 	}); 
 
-	return Promise.resolve('Temporal associations established');
+	return Promise.resolve('Record associations established');
   }
   
   // use `after` to be nonBlocking
   // all hooks just create a copy
-  if (temporalOptions.full) {
+  if (recordOptions.full) {
     model.addHook('afterCreate', insertHook);
     model.addHook('afterUpdate', insertHook);
     model.addHook('afterDestroy', insertHook);
@@ -142,19 +142,19 @@ var Temporal = function(model, sequelize, temporalOptions) {
   model.addHook('beforeBulkDestroy', insertBulkHook);
 
   var readOnlyHook = function(){
-    throw new Error("This is a read-only history database. You aren't allowed to modify it.");    
+    throw new Error("This is a read-only record database. You aren't allowed to modify it.");    
   };
 
-  modelHistory.addHook('beforeUpdate', readOnlyHook);
-  modelHistory.addHook('beforeDestroy', readOnlyHook);
+  modelRecord.addHook('beforeUpdate', readOnlyHook);
+  modelRecord.addHook('beforeDestroy', readOnlyHook);
 
-  sequelize.removeHook('beforeBulkSync', 'TemporalBulkSyncHook');//remove first to avoid duplicating
-  sequelize.removeHook('afterBulkSync', 'TemporalBulkSyncHook');//remove first to avoid duplicating  
-  sequelize.addHook('afterBulkSync', 'TemporalBulkSyncHook', afterBulkSyncHook);	
-  sequelize.addHook('beforeBulkSync', 'TemporalBulkSyncHook', beforeBulkSyncHook);	
+  sequelize.removeHook('beforeBulkSync', 'RecordBulkSyncHook');//remove first to avoid duplicating
+  sequelize.removeHook('afterBulkSync', 'RecordBulkSyncHook');//remove first to avoid duplicating  
+  sequelize.addHook('afterBulkSync', 'RecordBulkSyncHook', afterBulkSyncHook);	
+  sequelize.addHook('beforeBulkSync', 'RecordBulkSyncHook', beforeBulkSyncHook);	
 
-  modelHistory.addAssociations = temporalOptions.addAssociations;  
+  modelRecord.addAssociations = recordOptions.addAssociations;  
   return model;
 };
 
-module.exports = Temporal;
+module.exports = Record;
