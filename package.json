@@ -1,7 +1,7 @@
 {
-  "name": "sequelize-historical",
-  "version": "5.1.0",
-  "description": "Historical tables for Sequelize",
+  "name": "sequelize-record",
+  "version": "1.0.1",
+  "description": "Record tables for Sequelize",
   "main": "index.js",
   "directories": {
     "test": "test"
@@ -11,7 +11,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/opencollective/sequelize-historical.git"
+    "url": "git+https://github.com/kurisutofu/sequelize-record.git"
   },
   "keywords": [
     "sequelize",
@@ -20,21 +20,23 @@
     "sql11",
     "undo",
     "paranoid",
-    "historical"
+	"historical",
+	"record",
+	"history"
   ],
   "author": "greenify <greenify@notsharingmy.info> (https://github.com/greenify)",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/opencollective/sequelize-historical/issues"
+    "url": "https://github.com/kurisutofu/sequelize-record/issues"
   },
-  "homepage": "https://github.com/opencollective/sequelize-historical#readme",
+  "homepage": "https://github.com/kurisutofu/sequelize-record#readme",
   "dependencies": {
-    "lodash": "^3.10.1"
+    "lodash": "^4.17.11"
   },
   "devDependencies": {
     "chai": "^4.2.0",
     "chai-as-promised": "^7.1.1",
-    "mocha": "^6.1.3",
+    "mocha": "^6.1.4",
     "sequelize": "^5.4.0",
     "sqlite3": "^4.0.6"
   }
