@@ -1,6 +1,6 @@
 {
   "name": "sequelize-record",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Record tables for Sequelize",
   "main": "index.js",
   "directories": {
