@@ -3,7 +3,7 @@ Record tables for Sequelize
 
 Warning: this is a fork of [sequelize-temporal](https://github.com/bonaval/sequelize-temporal) that adds the ability to associate data history table to origin tables (table a record is based on) and to specify a different name for the __Record__ tables.
 
-[![Build Status](https://travis-ci.org/kurisutofu/sequelize-record.svg?branch=master)](https://travis-ci.org/opencollective/sequelize-record) [![Dependency Status](https://david-dm.org/kurisutofu/sequelize-record.svg)](https://david-dm.org/opencollective/sequelize-record) [![NPM version](https://img.shields.io/npm/v/sequelize-record.svg)](https://www.npmjs.com/package/sequelize-record) [![Greenkeeper badge](https://badges.greenkeeper.io/kurisutofu/sequelize-record.svg)](https://greenkeeper.io/)
+[![Build Status](https://travis-ci.org/kurisutofu/sequelize-record.svg?branch=master)](https://travis-ci.org/kurisutofu/sequelize-record) [![Dependency Status](https://david-dm.org/kurisutofu/sequelize-record.svg)](https://david-dm.org/kurisutofu/sequelize-record) [![NPM version](https://img.shields.io/npm/v/sequelize-record.svg)](https://www.npmjs.com/package/sequelize-record) [![Greenkeeper badge](https://badges.greenkeeper.io/kurisutofu/sequelize-record.svg)](https://greenkeeper.io/)
 
 
 What is it?
