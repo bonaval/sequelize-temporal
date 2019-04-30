@@ -80,48 +80,42 @@ var Record = function(model, sequelize, recordOptions) {
     }
   }
 
-  var afterBulkSyncHook = function(options){		
-	sequelize.removeHook('beforeBulkSync', 'RecordBulkSyncHook');
-	sequelize.removeHook('afterBulkSync', 'RecordBulkSyncHook');
-	return Promise.resolve('Record Hooks Removed');
-  }
+//   var afterBulkSyncHook = function(options){		
+// 	sequelize.removeHook('beforeBulkSync', 'RecordBulkSyncHook');
+// 	sequelize.removeHook('afterBulkSync', 'RecordBulkSyncHook');
+// 	return Promise.resolve('Record Hooks Removed');
+//   }
   
+  var beforeSync = function(options) {
+	const source = this;	
+	const sourceHistName = source.name + recordOptions.modelSuffix;
+	const sourceHist = sequelize.models[sourceHistName];
 
-  var beforeBulkSyncHook = function(options){	  
-	const allModels = sequelize.models;
+	if(!source.name.endsWith(recordOptions.modelSuffix) && source.associations && recordOptions.addAssociations == true && sourceHist) {
+		const pkfield = source.primaryKeyField;
+		//adding associations from record model to origin model's association
+		Object.keys(source.associations).forEach(assokey => {			
+			const association = source.associations[assokey];				
+			const associationOptions = _.cloneDeep(association.options);
+			const target = association.target;
+			const assocName = association.associationType.charAt(0).toLowerCase() + association.associationType.substr(1);				
 
-	Object.keys(allModels).forEach(key => {
-		const source = allModels[key];	
-		const sourceHistName = source.name + recordOptions.modelSuffix;
-		const sourceHist = allModels[sourceHistName];
+			//handle premary keys for belongsToMany
+			if(assocName == 'belongsToMany') {								
+				sourceHist.primaryKeys = _.forEach(source.primaryKeys, (x) => x.autoIncrement = false);
+				sourceHist.primaryKeyField = Object.keys(sourceHist.primaryKeys)[0];
+			}
 
-		if(!source.name.endsWith(recordOptions.modelSuffix) && source.associations && recordOptions.addAssociations == true && sourceHist) {
-			const pkfield = source.primaryKeyField;
-			//adding associations from record model to origin model's association
-			Object.keys(source.associations).forEach(key => {			
-				const association = source.associations[key];				
-				const target = association.target;
-				const assocName = association.associationType.charAt(0).toLowerCase() + association.associationType.substr(1);				
+			sourceHist[assocName].apply(sourceHist, [target, associationOptions]);			
+		});
 
-				//handle premary keys for belongsToMany
-				if(assocName == 'belongsToMany') {								
-					sourceHist.primaryKeys = _.forEach(source.primaryKeys, (x) => x.autoIncrement = false);
-					sourceHist.primaryKeyField = Object.keys(sourceHist.primaryKeys)[0];
-				}
-				
-				sourceHist[assocName].apply(sourceHist, [target, association.options]);
-
-				//TODO test with several associations to the same table i.e: addedBy, UpdatedBy
-			});
-
-			//adding associations between origin model and record					
-			source.hasMany(sourceHist, { foreignKey: pkfield });
-			sourceHist.belongsTo(source, { foreignKey: pkfield });	
-			
-			sequelize.models[sourceHistName] = sourceHist;	
-			sequelize.models[sourceHistName].sync();
-		}		
-	}); 
+		//adding associations between origin model and record					
+		source.hasMany(sourceHist, { foreignKey: pkfield });
+		sourceHist.belongsTo(source, { foreignKey: pkfield });	
+		
+		sequelize.models[sourceHistName] = sourceHist;	
+		sequelize.models[sourceHistName].sync();
+	}
 
 	return Promise.resolve('Record associations established');
   }
@@ -148,10 +142,7 @@ var Record = function(model, sequelize, recordOptions) {
   modelRecord.addHook('beforeUpdate', readOnlyHook);
   modelRecord.addHook('beforeDestroy', readOnlyHook);
 
-  sequelize.removeHook('beforeBulkSync', 'RecordBulkSyncHook');//remove first to avoid duplicating
-  sequelize.removeHook('afterBulkSync', 'RecordBulkSyncHook');//remove first to avoid duplicating  
-  sequelize.addHook('afterBulkSync', 'RecordBulkSyncHook', afterBulkSyncHook);	
-  sequelize.addHook('beforeBulkSync', 'RecordBulkSyncHook', beforeBulkSyncHook);	
+  model.addHook('beforeSync', 'RecordSyncHook', beforeSync);
 
   modelRecord.addAssociations = recordOptions.addAssociations;  
   return model;

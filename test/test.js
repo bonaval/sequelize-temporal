@@ -17,7 +17,7 @@ describe('Read-only API', function(){
 		}	
 
 		const dbFile = __dirname + '/.test.sqlite';
-		try {  fs.unlinkSync(dbFile); } catch {};
+		try {fs.unlinkSync(dbFile);} catch {};
 
 		sequelize = new Sequelize('', '', '', {
 			dialect: 'sqlite',
@@ -27,16 +27,19 @@ describe('Read-only API', function(){
 
 		//Define origin models
 		const User = sequelize.define('User', { name: Sequelize.TEXT }, {paranoid: paranoid || false});
-		const Creation = sequelize.define('Creation', { name: Sequelize.TEXT, user: Sequelize.INTEGER }, {paranoid: paranoid || false});	
+		const Creation = sequelize.define('Creation', { name: Sequelize.TEXT, user: Sequelize.INTEGER, user2: Sequelize.INTEGER }, {paranoid: paranoid || false});	
 		const Tag = sequelize.define('Tag', { name: Sequelize.TEXT }, {paranoid: paranoid || false});	
 		const Event = sequelize.define('Event', { name: Sequelize.TEXT, creation: Sequelize.INTEGER }, {paranoid: paranoid || false});	
 		const CreationTag = sequelize.define('CreationTag', { creation: Sequelize.INTEGER, tag: Sequelize.INTEGER }, {paranoid: paranoid || false});
 
 		//Associate models	
 
-		//1.*
-		User.hasMany(Creation, { foreignKey: 'user' });
-		Creation.belongsTo(User, { foreignKey: 'user' });	
+		//1.* with 2 association to same table
+		User.hasMany(Creation, { foreignKey: 'user', as: 'creatorCreations' });
+		User.hasMany(Creation, { foreignKey: 'user2', as: 'updatorCreations' });
+			
+		Creation.belongsTo(User, { foreignKey: 'user', as: 'createUser' });	
+		Creation.belongsTo(User, { foreignKey: 'user2', as: 'updateUser' });	
 
 		//1.1
 		Event.belongsTo(Creation, { foreignKey: 'creation' });
@@ -56,7 +59,7 @@ describe('Read-only API', function(){
 		return sequelize.sync({force:true});
 	}
 
-	//Adding 3 tags, 2 creations, 2 events, 1 user
+	//Adding 3 tags, 2 creations, 2 events, 2 user
 	//each creation has 3 tags
 	//user has 2 creations
 	//creation has 1 event
@@ -103,8 +106,19 @@ describe('Read-only API', function(){
 			u.save();
 			return u;		
 		});
+
+		const user2 = sequelize.models.User.create({ name: 'user02' }).then( u => {
+			u.name = 'user02 renamed';		
+			u.save();						
+			u.name = 'user02 renamed twice';
+			u.save();			
+			u.name = 'user02 renamed three times';
+			u.save();
+			return u;		
+		});
 		
-		const creation = user.then(u => sequelize.models.Creation.create({ name: 'creation01', user: u.id }))
+		const creation = Promise.all([user, user2])
+			.then(allU => sequelize.models.Creation.create({ name: 'creation01', user: allU[0].id, user2: allU[1].id }))
 			.then( c => {
 			c.name = 'creation01 renamed';
 			c.save();	
@@ -115,7 +129,8 @@ describe('Read-only API', function(){
 			return c;						
 		});
 
-		const creation2 = user.then(u => sequelize.models.Creation.create({ name: 'creation02', user: u.id }))
+		const creation2 = Promise.all([user, user2])
+			.then(allU => sequelize.models.Creation.create({ name: 'creation02', user: allU[0].id, user2: allU[1].id }))
 			.then( c => {
 			c.name = 'creation02 renamed';
 			c.save();	
@@ -211,6 +226,7 @@ describe('Read-only API', function(){
 			tag2, 
 			tag3, 
 			user, 
+			user2,
 			creation, 
 			creation2,
 			creationTag1,
@@ -267,8 +283,9 @@ describe('Read-only API', function(){
 				});
 
 				const creation = user.then(u =>{
-					assert.exists(u.getCreations, 'User: getCreations does not exist');
-					return u.getCreations();
+					assert.exists(u.getCreatorCreations, 'User: getCreatorCreations does not exist');
+					assert.exists(u.getUpdatorCreations, 'User: getUpdatorCreations does not exist');
+					return u.getCreatorCreations();
 				});				
 
 				//Creation associations check
@@ -293,10 +310,11 @@ describe('Read-only API', function(){
 
 				const cUser = creation.then(c =>{		
 					const first = c[0];
-					assert.exists(first.getUser, 'Creation: getUser does not exist');	
-					return first.getUser();
+					assert.exists(first.getCreateUser, 'Creation: getCreateUser does not exist');	
+					assert.exists(first.getUpdateUser, 'Creation: getUpdateUser does not exist');
+					return first.getCreateUser();
 				}).then(cu => {
-					assert.exists(cu, 'Creation: did not find user');
+					assert.exists(cu, 'Creation: did not find CreateUser');
 					return Promise.resolve('done');
 				});				
 
@@ -333,7 +351,7 @@ describe('Read-only API', function(){
 				});	
 
 				//Check record data
-				const userRecords = init.then(assertCount(sequelize.models.UserRecord, 3));
+				const userRecords = init.then(assertCount(sequelize.models.UserRecord, 6));
 				const creationRecords = init.then(assertCount(sequelize.models.CreationRecord, 6));
 				const tagRecords = init.then(assertCount(sequelize.models.TagRecord, 9));
 				const eventRecords = init.then(assertCount(sequelize.models.EventRecord, 6));
@@ -376,16 +394,18 @@ describe('Read-only API', function(){
 				});
 
 				const creation = user.then(u =>{
-					assert.exists(u.getCreations, 'User: getCreations does not exist');
-					return u.getCreations();
+					assert.exists(u.getCreatorCreations, 'User: getCreatorCreations does not exist');
+					assert.exists(u.getUpdatorCreations, 'User: getUpdatorCreations does not exist');
+					return u.getCreatorCreations();
 				});
 
 				//UserRecords associations check
 				const uhCreation = userRecord.then(uh =>{
 					assert.equal(uh.length, 3, 'User: should have found 3 UserRecords');
 					const first = uh[0];
-					assert.exists(first.getCreations, 'UserRecord: getCreations does not exist');					
-					return first.getCreations();
+					assert.exists(first.getCreatorCreations, 'UserRecord: getCreatorCreations does not exist');					
+					assert.exists(first.getUpdatorCreations, 'UserRecord: getUpdatorCreations does not exist');
+					return first.getCreatorCreations();
 				}).then(uhc => {
 					assert.equal(uhc.length, 2, 'UserRecord: should have found 2 creations');
 					return Promise.resolve('done');
@@ -422,10 +442,11 @@ describe('Read-only API', function(){
 
 				const cUser = creation.then(c =>{		
 					const first = c[0];
-					assert.exists(first.getUser, 'Creation: getUser does not exist');	
-					return first.getUser();
+					assert.exists(first.getCreateUser, 'Creation: getCreateUser does not exist');	
+					assert.exists(first.getUpdateUser, 'Creation: getUpdateUser does not exist');	
+					return first.getCreateUser();
 				}).then(cu => {
-					assert.exists(cu, 'Creation: did not find a user');
+					assert.exists(cu, 'Creation: did not find a create user');
 					return Promise.resolve('done');
 				});
 
@@ -451,8 +472,9 @@ describe('Read-only API', function(){
 
 				const chUser = creationRecord.then(ch =>{
 					const first = ch[0];
-					assert.exists(first.getUser, 'CreationRecord: getUser does not exist');
-					return first.getUser();
+					assert.exists(first.getCreateUser, 'CreationRecord: getCreateUser does not exist');
+					assert.exists(first.getUpdateUser, 'CreationRecord: getUpdateUser does not exist');
+					return first.getCreateUser();
 				}).then(chu => {
 					assert.exists(chu, 'CreationRecord: did not find a user');
 					return Promise.resolve('done');
@@ -541,7 +563,7 @@ describe('Read-only API', function(){
 				});	
 				
 				//Check record data
-				const userRecords = init.then(assertCount(sequelize.models.UserRecord, 3));
+				const userRecords = init.then(assertCount(sequelize.models.UserRecord, 6));
 				const creationRecords = init.then(assertCount(sequelize.models.CreationRecord, 6));
 				const tagRecords = init.then(assertCount(sequelize.models.TagRecord, 9));
 				const eventRecords = init.then(assertCount(sequelize.models.EventRecord, 6));
@@ -766,17 +788,17 @@ describe('Read-only API', function(){
 				.then(() => sequelize.transaction())
 				.then((t) => {
 					var opts = {transaction: t};
-					assertCount(sequelize.models.UserRecord,3,opts);
+					assertCount(sequelize.models.UserRecord,6,opts);
 					return sequelize.models.User.destroy({
 						where: {},
 						truncate: true, // truncate the entire table
 						transaction: t
 					})
-					.then(assertCount(sequelize.models.UserRecord,6, opts))
+					.then(assertCount(sequelize.models.UserRecord,3,opts))
 					.then(() => t.rollback())
 					.catch(err => assert.exists(err));
 				})
-				.then(assertCount(sequelize.models.UserRecord,3));
+				.then(assertCount(sequelize.models.UserRecord,6));
 		});
 	});
 	  
