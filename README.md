@@ -1,7 +1,7 @@
-History tables for Sequelize
+Historical tables for Sequelize
 ===============================
 
-Warning: this is a fork of [sequelize-temporal](https://github.com/bonaval/sequelize-temporal) that adds support for Sequelize 5 and that adds the ability to associate data history table to origin tables (table a history is based on) and to specify a different name for the __History__ tables.
+Warning: this is a fork of [sequelize-temporal](https://github.com/bonaval/sequelize-temporal) that adds support for Sequelize 5 and that adds the ability to associate data history table to origin tables (table a history is based on) and to specify a different name for the __Historical__ tables.
 
 [![Build Status](https://travis-ci.org/opencollective/sequelize-historical.svg?branch=master)](https://travis-ci.org/opencollective/sequelize-historical) [![Dependency Status](https://david-dm.org/opencollective/sequelize-historical.svg)](https://david-dm.org/opencollective/sequelize-historical) [![NPM version](https://img.shields.io/npm/v/sequelize-historical.svg)](https://www.npmjs.com/package/sequelize-historical) [![Greenkeeper badge](https://badges.greenkeeper.io/opencollective/sequelize-historical.svg)](https://greenkeeper.io/)
 
@@ -9,7 +9,7 @@ Warning: this is a fork of [sequelize-temporal](https://github.com/bonaval/seque
 What is it?
 -----------
 
-___History__ tables maintain __previous values__ of data. Modifying operations (UPDATE, DELETE) on these tables don't cause permanent changes to entries, but create new versions of them. Hence this might be used to:
+___Historical__ tables maintain __Historical versions__ of data. Modifying operations (UPDATE, DELETE) on these tables don't cause permanent changes to entries, but create new versions of them. Hence this might be used to:
 
 - log changes (security/auditing)
 - undo functionalities
@@ -36,7 +36,7 @@ How to use
 
 ```
 var Sequelize = require('sequelize');
-var History = require('sequelize-historical');
+var Historical = require('sequelize-historical');
 ```
 
 Create a sequelize instance and your models, e.g.
@@ -48,26 +48,26 @@ var sequelize = new Sequelize('', '', '', {
 });
 ```
 
-### 2) Add the *history* feature to your models
+### 2) Add the *historical* feature to your models
 
 ```
-var User = History(sequelize.define('User'), sequelize);
+var User = Historical(sequelize.define('User'), sequelize);
 ```
 
-The output of `History` is its input model, so assigning it's output to your
+The output of `Historical` is its input model, so assigning it's output to your
 Model is not necessary, hence it's just the lazy version of:
 
 ```
 var User = sequelize.define('User', {.types.}, {.options.}); //Vanilla Sequelize
-History(User, sequelize);
+Historical(User, sequelize);
 ```
 
 Options
 -------
 
-The default syntax for `History` is:
+The default syntax for `Historical` is:
 
-`History(model, sequelizeInstance, options)`
+`Historical(model, sequelizeInstance, options)`
 
 whereas the options are listed here (with default value).
 
@@ -162,7 +162,7 @@ Triggers for storing old versions of rows to history table are inspired by refer
 
 ### Notes
 
-If you only use Postgres, you might want to have a look at the [History Table](https://github.com/arkhipov/history_tables) extension.
+If you only use Postgres, you might want to have a look at the [Temporal Table](https://github.com/arkhipov/temporal_tables) extension.
 
 License
 -------
