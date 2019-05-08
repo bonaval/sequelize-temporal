@@ -80,14 +80,18 @@ var Record = function(model, sequelize, recordOptions) {
     }
   }
 
-//   var afterBulkSyncHook = function(options){		
-// 	sequelize.removeHook('beforeBulkSync', 'RecordBulkSyncHook');
-// 	sequelize.removeHook('afterBulkSync', 'RecordBulkSyncHook');
-// 	return Promise.resolve('Record Hooks Removed');
-//   }
+  var beforeBulkSyncHook = function(options){	  
+	const allModels = this.models;
+
+	Object.keys(allModels).forEach(key => {
+		const source = allModels[key];	
+		beforeSync(source);			
+	}); 
+
+	return Promise.resolve('Record associations established');
+  }
   
-  var beforeSync = function(options) {
-	const source = this;	
+  var beforeSync = function(source) {
 	const sourceHistName = source.name + recordOptions.modelSuffix;
 	const sourceHist = sequelize.models[sourceHistName];
 
@@ -142,7 +146,10 @@ var Record = function(model, sequelize, recordOptions) {
   modelRecord.addHook('beforeUpdate', readOnlyHook);
   modelRecord.addHook('beforeDestroy', readOnlyHook);
 
-  model.addHook('beforeSync', 'RecordSyncHook', beforeSync);
+  if(!sequelize.hasHook('beforeBulkSync','RecordBulkSyncHook')) {
+	  sequelize.addHook('beforeBulkSync', 'RecordBulkSyncHook', beforeBulkSyncHook);	
+  }
+
 
   modelRecord.addAssociations = recordOptions.addAssociations;  
   return model;
