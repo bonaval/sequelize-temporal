@@ -1,42 +1,42 @@
-Record tables for Sequelize
+History tables for Sequelize
 ===============================
 
-Warning: this is a fork of [sequelize-temporal](https://github.com/bonaval/sequelize-temporal) that adds the ability to associate data history table to origin tables (table a record is based on) and to specify a different name for the __Record__ tables.
+Warning: this is a fork of [sequelize-temporal](https://github.com/bonaval/sequelize-temporal) that adds support for Sequelize 5 and that adds the ability to associate data history table to origin tables (table a history is based on) and to specify a different name for the __History__ tables.
 
-[![Build Status](https://travis-ci.org/kurisutofu/sequelize-record.svg?branch=master)](https://travis-ci.org/kurisutofu/sequelize-record) [![Dependency Status](https://david-dm.org/kurisutofu/sequelize-record.svg)](https://david-dm.org/kurisutofu/sequelize-record) [![NPM version](https://img.shields.io/npm/v/sequelize-record.svg)](https://www.npmjs.com/package/sequelize-record) [![Greenkeeper badge](https://badges.greenkeeper.io/kurisutofu/sequelize-record.svg)](https://greenkeeper.io/)
+[![Build Status](https://travis-ci.org/opencollective/sequelize-historical.svg?branch=master)](https://travis-ci.org/opencollective/sequelize-historical) [![Dependency Status](https://david-dm.org/opencollective/sequelize-historical.svg)](https://david-dm.org/opencollective/sequelize-historical) [![NPM version](https://img.shields.io/npm/v/sequelize-historical.svg)](https://www.npmjs.com/package/sequelize-historical) [![Greenkeeper badge](https://badges.greenkeeper.io/opencollective/sequelize-historical.svg)](https://greenkeeper.io/)
 
 
 What is it?
 -----------
 
-___Record__ tables maintain __previous values__ of data. Modifying operations (UPDATE, DELETE) on these tables don't cause permanent changes to entries, but create new versions of them. Hence this might be used to:
+___History__ tables maintain __previous values__ of data. Modifying operations (UPDATE, DELETE) on these tables don't cause permanent changes to entries, but create new versions of them. Hence this might be used to:
 
 - log changes (security/auditing)
 - undo functionalities
 - track interactions (customer support)
 
-Under the hood a record table with the same structure, but without constraints is created (unless option __addAssociation__ is set to __true__).
+Under the hood a history table with the same structure, but without constraints is created (unless option __addAssociation__ is set to __true__).
 
 The normal singular/plural naming scheme in Sequelize is used:
 
-- model name: `modelName + Record`
-- table name: `modelName + Records`
+- model name: `modelName + History`
+- table name: `modelName + Histories`
 
 Installation
 ------------
 
 ```
-npm install sequelize-record
+npm install sequelize-historical
 ```
 
 How to use
 ----------
 
-### 1) Import `sequelize-record`
+### 1) Import `sequelize-historical`
 
 ```
 var Sequelize = require('sequelize');
-var Record = require('sequelize-record');
+var History = require('sequelize-historical');
 ```
 
 Create a sequelize instance and your models, e.g.
@@ -48,26 +48,26 @@ var sequelize = new Sequelize('', '', '', {
 });
 ```
 
-### 2) Add the *record* feature to your models
+### 2) Add the *history* feature to your models
 
 ```
-var User = Record(sequelize.define('User'), sequelize);
+var User = History(sequelize.define('User'), sequelize);
 ```
 
-The output of `Record` is its input model, so assigning it's output to your
+The output of `History` is its input model, so assigning it's output to your
 Model is not necessary, hence it's just the lazy version of:
 
 ```
 var User = sequelize.define('User', {.types.}, {.options.}); //Vanilla Sequelize
-Record(User, sequelize);
+History(User, sequelize);
 ```
 
 Options
 -------
 
-The default syntax for `Record` is:
+The default syntax for `History` is:
 
-`Record(model, sequelizeInstance, options)`
+`History(model, sequelizeInstance, options)`
 
 whereas the options are listed here (with default value).
 
@@ -78,70 +78,70 @@ whereas the options are listed here (with default value).
   for increased performance without warranties */
   blocking: true,
   /* 
-  By default sequelize-record persist only changes, and saves the previous state in the record table.
-  The "full" option saves all transactions into the record database
+  By default sequelize-historical persist only changes, and saves the previous state in the history table.
+  The "full" option saves all transactions into the history database
   (i.e. this includes the latest state.)
-   This allows to only query the record table to get the full record of an entity.
+   This allows to only query the history table to get the full history of an entity.
   */
   full: false,
   /* 
-  By default sequelize-record will add 'Record' to the record Model name and 'Records' to the record table.
+  By default sequelize-historical will add 'History' to the history Model name and 'Histories' to the history table.
   By updating the modelSuffix value, you can decide what the naming will be.
-  The value will be appended to the record Model name and its plural will be appended to the record tablename.
+  The value will be appended to the history Model name and its plural will be appended to the history tablename.
 
   examples for table User:
-	modelSuffix: '_Hist'  --> Record Model Name: User_Hist  --> Record Table Name: User_Hists  
-	modelSuffix: 'Memory'  --> Record Model Name: UserMemory  --> Record Table Name: UserMemories
-	modelSuffix: 'Pass'  --> Record Model Name: UserPass  --> Record Table Name: UserPasses
+	modelSuffix: '_Hist'  --> History Model Name: User_Hist  --> History Table Name: User_Hists  
+	modelSuffix: 'Memory'  --> History Model Name: UserMemory  --> History Table Name: UserMemories
+	modelSuffix: 'Pass'  --> History Model Name: UserPass  --> History Table Name: UserPasses
   */
-  modelSuffix: 'Record',
+  modelSuffix: 'History',
   /* 
-  By default sequelize-record will create the record table without associations.
-  However, setting this flag to true, you can keep association between the record table and the table with the latest value (origin).
+  By default sequelize-historical will create the history table without associations.
+  However, setting this flag to true, you can keep association between the history table and the table with the latest value (origin).
 
   example for table User:
 	  model: 'User'
-	  record model: 'UserRecords'
-	  --> This would add function User.getUserRecords() to return all record entries for that user entry.
-	  --> This would add function UserRecords.getUser() to get the original user from an record.
+	  history model: 'UserHistories'
+	  --> This would add function User.getUserHistories() to return all history entries for that user entry.
+	  --> This would add function UserHistories.getUser() to get the original user from an history.
 
-   If a model has associations, those would be mirrored to the record table.
-   Origin model can only get its own records.
-   Even if a record table is associated to another origin table thought a foreign key field, the record table is not accessible from that origin table
+   If a model has associations, those would be mirrored to the history table.
+   Origin model can only get its own histories.
+   Even if a history table is associated to another origin table thought a foreign key field, the history table is not accessible from that origin table
 
-   Basically, what you can access in the origin table can be accessed from the record table.
+   Basically, what you can access in the origin table can be accessed from the history table.
 
    example:
 	model: User
-	record model: UserRecords
+	history model: UserHistories
 
 	model: Creation
-	record model: CreationRecords
+	history model: CreationHistories
 
 	User <-> Creation: 1 to many
 
 	User.getCreations() exists (1 to many)
 	Creation.getUser() exists (1 to 1)	
 
-	User <-> UserRecords: 1 to many
+	User <-> UserHistories: 1 to many
 
-	User.getUserRecords() exists (1 to many)
-	UserRecords.getUser() exists (1 to 1)
+	User.getUserHistories() exists (1 to many)
+	UserHistories.getUser() exists (1 to 1)
 
-	Creation <-> CreationRecords: 1 to many
+	Creation <-> CreationHistories: 1 to many
 
-	Creation.getCreationRecords() exists (1 to many)
-	CreationRecords.getCreation() exists (1 to 1)
+	Creation.getCreationHistories() exists (1 to many)
+	CreationHistories.getCreation() exists (1 to 1)
 
-	CreationRecords -> User: many to 1
+	CreationHistories -> User: many to 1
 
-	CreationRecords.getUser() exists (1 to 1) (same as Creation.getUser())
-	User.GetCreationRecords DOES NOT EXIST. THE ORIGIN TABLE IS NOT MODIFIED.
+	CreationHistories.getUser() exists (1 to 1) (same as Creation.getUser())
+	User.GetCreationHistories DOES NOT EXIST. THE ORIGIN TABLE IS NOT MODIFIED.
 
-	UserRecords -> Creation: many to many
+	UserHistories -> Creation: many to many
 
-	UserRecords.getCreations() exists (1 to many) (same as User.getCreations())
-	CreationRecords.getUser() DOES NOT EXIST. THE ORIGIN TABLE IS NOT MODIFIED.
+	UserHistories.getCreations() exists (1 to many) (same as User.getCreations())
+	CreationHistories.getUser() DOES NOT EXIST. THE ORIGIN TABLE IS NOT MODIFIED.
 
   */
   addAssociations: false
@@ -150,19 +150,19 @@ whereas the options are listed here (with default value).
 Details
 --------
 
-@See: https://wiki.postgresql.org/wiki/SQL2011Record
+@See: https://wiki.postgresql.org/wiki/SQL2011History
 
-### Record table
+### History table
 
-Record table stores record versions of rows, which are inserted by triggers on every modifying operation executed on current table. It has the same structure and indexes as current table, but it doesn’t have any constraints. Record tables are insert only and creator should prevent other users from executing updates or deletes by correct user rights settings. Otherwise the record can be violated.
+History table stores history versions of rows, which are inserted by triggers on every modifying operation executed on current table. It has the same structure and indexes as current table, but it doesn’t have any constraints. History tables are insert only and creator should prevent other users from executing updates or deletes by correct user rights settings. Otherwise the history can be violated.
 
 ### Hooks
 
-Triggers for storing old versions of rows to record table are inspired by referential integrity triggers. They are fired for each row before UPDATE and DELETE (within the same transaction)
+Triggers for storing old versions of rows to history table are inspired by referential integrity triggers. They are fired for each row before UPDATE and DELETE (within the same transaction)
 
 ### Notes
 
-If you only use Postgres, you might want to have a look at the [Record Table](https://github.com/arkhipov/record_tables) extension.
+If you only use Postgres, you might want to have a look at the [History Table](https://github.com/arkhipov/history_tables) extension.
 
 License
 -------

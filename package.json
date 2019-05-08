@@ -1,7 +1,7 @@
 {
-  "name": "sequelize-record",
-  "version": "1.0.2",
-  "description": "Record tables for Sequelize",
+  "name": "sequelize-historical",
+  "version": "1.0.5",
+  "description": "Historical tables for Sequelize",
   "main": "index.js",
   "directories": {
     "test": "test"

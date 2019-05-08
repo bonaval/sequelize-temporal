@@ -5,11 +5,11 @@ var recordDefaultOptions = {
   // for increased performance
   blocking: true,
   full: false,
-  modelSuffix: 'Record',
+  modelSuffix: 'History',
   addAssociations: false
 };
 
-var Record = function(model, sequelize, recordOptions) {
+var Historical = function(model, sequelize, recordOptions) {
   recordOptions = _.extend({},recordDefaultOptions, recordOptions);
 
   var Sequelize = sequelize.Sequelize;
@@ -56,14 +56,16 @@ var Record = function(model, sequelize, recordOptions) {
      recordModelOptions.indexes = indexes.filter(function(index){return !index.unique && index.type != 'UNIQUE';});
   }
 
-  var modelRecord = sequelize.define(recordName, recordAttributes, recordModelOptions);
+  var modelHistory = sequelize.define(recordName, recordAttributes, recordModelOptions);
+  modelHistory.originModel = model;
+  modelHistory.addAssociations = recordOptions.addAssociations; 
 
   // we already get the updatedAt timestamp from our models
   var insertHook = function(obj, options){
     var dataValues = (!recordOptions.full && obj._previousDataValues) || obj.dataValues;
-    var recordRecord = modelRecord.create(dataValues, {transaction: options.transaction});
+    var recordHistory = modelHistory.create(dataValues, {transaction: options.transaction});
     if(recordOptions.blocking){
-      return recordRecord;
+      return recordHistory;
     }
   }
   var insertBulkHook = function(options){
@@ -71,7 +73,7 @@ var Record = function(model, sequelize, recordOptions) {
       var queryAll = model.findAll({where: options.where, transaction: options.transaction}).then(function(hits){
         if(hits){
           hits = _.map(hits, 'dataValues');
-          return modelRecord.bulkCreate(hits, {transaction: options.transaction});
+          return modelHistory.bulkCreate(hits, {transaction: options.transaction});
         }
       });
       if(recordOptions.blocking){
@@ -80,18 +82,11 @@ var Record = function(model, sequelize, recordOptions) {
     }
   }
 
-//   var afterBulkSyncHook = function(options){		
-// 	sequelize.removeHook('beforeBulkSync', 'RecordBulkSyncHook');
-// 	sequelize.removeHook('afterBulkSync', 'RecordBulkSyncHook');
-// 	return Promise.resolve('Record Hooks Removed');
-//   }
-  
   var beforeSync = function(options) {
-	const source = this;	
-	const sourceHistName = source.name + recordOptions.modelSuffix;
-	const sourceHist = sequelize.models[sourceHistName];
+	const source = this.originModel;	
+	const sourceHist = this;
 
-	if(!source.name.endsWith(recordOptions.modelSuffix) && source.associations && recordOptions.addAssociations == true && sourceHist) {
+	if(source && !source.name.endsWith(recordOptions.modelSuffix) && source.associations && recordOptions.addAssociations == true && sourceHist) {
 		const pkfield = source.primaryKeyField;
 		//adding associations from record model to origin model's association
 		Object.keys(source.associations).forEach(assokey => {			
@@ -113,11 +108,10 @@ var Record = function(model, sequelize, recordOptions) {
 		source.hasMany(sourceHist, { foreignKey: pkfield });
 		sourceHist.belongsTo(source, { foreignKey: pkfield });	
 		
-		sequelize.models[sourceHistName] = sourceHist;	
-		sequelize.models[sourceHistName].sync();
+		sequelize.models[sourceHist.name] = sourceHist;			
 	}
 
-	return Promise.resolve('Record associations established');
+	return Promise.resolve('Historical associations established');
   }
   
   // use `after` to be nonBlocking
@@ -139,13 +133,11 @@ var Record = function(model, sequelize, recordOptions) {
     throw new Error("This is a read-only record database. You aren't allowed to modify it.");    
   };
 
-  modelRecord.addHook('beforeUpdate', readOnlyHook);
-  modelRecord.addHook('beforeDestroy', readOnlyHook);
+  modelHistory.addHook('beforeUpdate', readOnlyHook);
+  modelHistory.addHook('beforeDestroy', readOnlyHook);
+  modelHistory.addHook('beforeSync', 'HistoricalSyncHook', beforeSync); 
 
-  model.addHook('beforeSync', 'RecordSyncHook', beforeSync);
-
-  modelRecord.addAssociations = recordOptions.addAssociations;  
   return model;
 };
 
-module.exports = Record;
+module.exports = Historical;
