@@ -1,4 +1,4 @@
-declare module 'sequelize-record' { 
+declare module 'sequelize-historical' { 
 	interface Options { 
 		blocking?:boolean,
 		full?:boolean,
