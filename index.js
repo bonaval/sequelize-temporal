@@ -34,7 +34,7 @@ var Historical = function(model, sequelize, historyOptions) {
   var historyAttributes = _(model.rawAttributes).mapValues(function(v){	
     v = _.omit(v, excludedAttributes);
     // remove the "NOW" defaultValue for the default timestamps
-    // we want to save them, but just a copy from our master history
+    // we want to save them, but just a copy from our master record
     if(v.fieldName == "createdAt" || v.fieldName == "updatedAt"){
       v.type = Sequelize.DATE;
     }
@@ -63,11 +63,12 @@ var Historical = function(model, sequelize, historyOptions) {
   // we already get the updatedAt timestamp from our models
   var insertHook = function(obj, options){
     var dataValues = (!historyOptions.full && obj._previousDataValues) || obj.dataValues;
-    var historyHistory = modelHistory.create(dataValues, {transaction: options.transaction});
+    var historyRecord = modelHistory.create(dataValues, {transaction: options.transaction});
     if(historyOptions.blocking){
-      return historyHistory;
+      return historyRecord;
     }
   }
+  
   var insertBulkHook = function(options){
     if(!options.individualHooks){
       var queryAll = model.findAll({where: options.where, transaction: options.transaction}).then(function(hits){

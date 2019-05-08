@@ -1,7 +1,7 @@
 Historical tables for Sequelize
 ===============================
 
-Warning: this is a fork of [sequelize-temporal](https://github.com/bonaval/sequelize-temporal) that adds support for Sequelize 5 and that adds the ability to associate data history table to origin tables (table a history is based on) and to specify a different name for the __Historical__ tables.
+Warning: this is a fork of [sequelize-temporal](https://github.com/bonaval/sequelize-temporal) that adds support for Sequelize 5 and that adds the ability to associate data history table to origin tables (table a history is based on) and to specify a different name for the __historical__ tables.
 
 [![Build Status](https://travis-ci.org/opencollective/sequelize-historical.svg?branch=master)](https://travis-ci.org/opencollective/sequelize-historical) [![Dependency Status](https://david-dm.org/opencollective/sequelize-historical.svg)](https://david-dm.org/opencollective/sequelize-historical) [![NPM version](https://img.shields.io/npm/v/sequelize-historical.svg)](https://www.npmjs.com/package/sequelize-historical) [![Greenkeeper badge](https://badges.greenkeeper.io/opencollective/sequelize-historical.svg)](https://greenkeeper.io/)
 
@@ -9,7 +9,7 @@ Warning: this is a fork of [sequelize-temporal](https://github.com/bonaval/seque
 What is it?
 -----------
 
-___Historical__ tables maintain __Historical versions__ of data. Modifying operations (UPDATE, DELETE) on these tables don't cause permanent changes to entries, but create new versions of them. Hence this might be used to:
+Historical tables maintain __historical versions__ of data. Modifying operations (UPDATE, DELETE) on these tables don't cause permanent changes to entries, but create new versions of them. Hence this might be used to:
 
 - log changes (security/auditing)
 - undo functionalities
@@ -54,11 +54,11 @@ var sequelize = new Sequelize('', '', '', {
 var User = Historical(sequelize.define('User'), sequelize);
 ```
 
-The output of `Historical` is its input model, so assigning it's output to your
+The output of `historical` is its input model, so assigning it's output to your
 Model is not necessary, hence it's just the lazy version of:
 
 ```
-var User = sequelize.define('User', {.types.}, {.options.}); //Vanilla Sequelize
+var User = sequelize.define('User', {.types.}, {.options.}); // Sequelize Docu
 Historical(User, sequelize);
 ```
 
@@ -150,11 +150,11 @@ whereas the options are listed here (with default value).
 Details
 --------
 
-@See: https://wiki.postgresql.org/wiki/SQL2011History
+@See: https://wiki.postgresql.org/wiki/SQL2011Temporal
 
 ### History table
 
-History table stores history versions of rows, which are inserted by triggers on every modifying operation executed on current table. It has the same structure and indexes as current table, but it doesn’t have any constraints. History tables are insert only and creator should prevent other users from executing updates or deletes by correct user rights settings. Otherwise the history can be violated.
+History table stores historical versions of rows, which are inserted by triggers on every modifying operation executed on current table. It has the same structure and indexes as current table, but it doesn’t have any constraints. History tables are insert only and creator should prevent other users from executing updates or deletes by correct user rights settings. Otherwise the history can be violated.
 
 ### Hooks
 
