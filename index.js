@@ -57,6 +57,7 @@ var Record = function(model, sequelize, recordOptions) {
   }
 
   var modelRecord = sequelize.define(recordName, recordAttributes, recordModelOptions);
+  modelRecord.originModel = model;
 
   // we already get the updatedAt timestamp from our models
   var insertHook = function(obj, options){
@@ -80,22 +81,11 @@ var Record = function(model, sequelize, recordOptions) {
     }
   }
 
-  var beforeBulkSyncHook = function(options){	  
-	const allModels = this.models;
+  var beforeSync = function(options) {
+	const source = this.originModel;	
+	const sourceHist = this;
 
-	Object.keys(allModels).forEach(key => {
-		const source = allModels[key];	
-		beforeSync(source);			
-	}); 
-
-	return Promise.resolve('Record associations established');
-  }
-  
-  var beforeSync = function(source) {
-	const sourceHistName = source.name + recordOptions.modelSuffix;
-	const sourceHist = sequelize.models[sourceHistName];
-
-	if(!source.name.endsWith(recordOptions.modelSuffix) && source.associations && recordOptions.addAssociations == true && sourceHist) {
+	if(source && !source.name.endsWith(recordOptions.modelSuffix) && source.associations && recordOptions.addAssociations == true && sourceHist) {
 		const pkfield = source.primaryKeyField;
 		//adding associations from record model to origin model's association
 		Object.keys(source.associations).forEach(assokey => {			
@@ -117,8 +107,7 @@ var Record = function(model, sequelize, recordOptions) {
 		source.hasMany(sourceHist, { foreignKey: pkfield });
 		sourceHist.belongsTo(source, { foreignKey: pkfield });	
 		
-		sequelize.models[sourceHistName] = sourceHist;	
-		sequelize.models[sourceHistName].sync();
+		sequelize.models[sourceHist.name] = sourceHist;			
 	}
 
 	return Promise.resolve('Record associations established');
@@ -145,11 +134,7 @@ var Record = function(model, sequelize, recordOptions) {
 
   modelRecord.addHook('beforeUpdate', readOnlyHook);
   modelRecord.addHook('beforeDestroy', readOnlyHook);
-
-  if(!sequelize.hasHook('beforeBulkSync','RecordBulkSyncHook')) {
-	  sequelize.addHook('beforeBulkSync', 'RecordBulkSyncHook', beforeBulkSyncHook);	
-  }
-
+  modelRecord.addHook('beforeSync', 'RecordSyncHook', beforeSync);
 
   modelRecord.addAssociations = recordOptions.addAssociations;  
   return model;
