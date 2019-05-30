@@ -31,7 +31,7 @@ npm install sequelize-temporal
 How to use
 ----------
 
-### 1) Import `sequelize-historical`
+### 1) Import `sequelize-temporal`
 
 ```
 var Sequelize = require('sequelize');
@@ -82,7 +82,7 @@ whereas the options are listed here (with default value).
   */
   full: false,
   /* 
-  By default sequelize-historical will add 'History' to the history Model name and 'Histories' to the history table.
+  By default sequelize-temporal will add 'History' to the history Model name and 'Histories' to the history table.
   By updating the modelSuffix value, you can decide what the naming will be.
   The value will be appended to the history Model name and its plural will be appended to the history tablename.
 
@@ -93,7 +93,7 @@ whereas the options are listed here (with default value).
   */
   modelSuffix: 'History',
   /* 
-  By default sequelize-historical will create the history table without associations.
+  By default sequelize-temporal will create the history table without associations.
   However, setting this flag to true, you can keep association between the history table and the table with the latest value (origin).
 
   example for table User:
