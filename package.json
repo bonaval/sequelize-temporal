@@ -1,7 +1,7 @@
 {
-  "name": "sequelize-historical",
-  "version": "5.1.1",
-  "description": "Historical tables for Sequelize",
+	"name": "sequelize-temporal",
+	"version": "2.0.1",
+  "description": "Temporal tables for Sequelize",
   "main": "index.js",
   "directories": {
     "test": "test"
@@ -11,7 +11,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/opencollective/sequelize-historical.git"
+    "url": "git+https://github.com/bonaval/sequelize-temporal.git"
   },
   "keywords": [
     "sequelize",
@@ -25,7 +25,7 @@
   "author": "greenify <greenify@notsharingmy.info> (https://github.com/greenify)",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/opencollective/sequelize-historical/issues"
+    "url": "https://github.com/bonaval/sequelize-temporal/issues"
   },
   "homepage": "https://github.com/opencollective/sequelize-historical#readme",
   "dependencies": {
