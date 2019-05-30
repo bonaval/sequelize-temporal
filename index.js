@@ -9,12 +9,12 @@ var temporalDefaultOptions = {
   addAssociations: false
 };
 
-var Historical = function(model, sequelize, historyOptions) {
-  historyOptions = _.extend({},temporalDefaultOptions, historyOptions);
+var Temporal = function(model, sequelize, temporalOptions) {
+	temporalOptions = _.extend({},temporalDefaultOptions, temporalOptions);
 
   var Sequelize = sequelize.Sequelize;
 
-  var historyName = model.name + historyOptions.modelSuffix;
+  var historyName = model.name + temporalOptions.modelSuffix;
 
   var historyOwnAttrs = {
     hid: {
@@ -31,7 +31,7 @@ var Historical = function(model, sequelize, historyOptions) {
   };
 
   var excludedAttributes = ["Model","unique","primaryKey","autoIncrement", "set", "get", "_modelAttribute"];
-  var historyAttributes = _(model.rawAttributes).mapValues(function(v){	
+  var historyAttributes = _(model.rawAttributes).mapValues(function(v){
     v = _.omit(v, excludedAttributes);
     // remove the "NOW" defaultValue for the default timestamps
     // we want to save them, but just a copy from our master record
@@ -48,23 +48,23 @@ var Historical = function(model, sequelize, historyOptions) {
   };
   var excludedNames = ["name", "tableName", "sequelize", "uniqueKeys", "hasPrimaryKey", "hooks", "scopes", "instanceMethods", "defaultScope"];
   var modelOptions = _.omit(model.options, excludedNames);
-  var historyModelOptions = _.assign({}, modelOptions, historyOwnOptions);
+  var historyOptions = _.assign({}, modelOptions, historyOwnOptions);
   
   // We want to delete indexes that have unique constraint
-  var indexes = historyModelOptions.indexes;
+  var indexes = historyOptions.indexes;
   if(Array.isArray(indexes)){
-     historyModelOptions.indexes = indexes.filter(function(index){return !index.unique && index.type != 'UNIQUE';});
+	historyOptions.indexes = indexes.filter(function(index){return !index.unique && index.type != 'UNIQUE';});
   }
 
-  var modelHistory = sequelize.define(historyName, historyAttributes, historyModelOptions);
+  var modelHistory = sequelize.define(historyName, historyAttributes, historyOptions);
   modelHistory.originModel = model;
-  modelHistory.addAssociations = historyOptions.addAssociations; 
+  modelHistory.addAssociations = temporalOptions.addAssociations; 
 
   // we already get the updatedAt timestamp from our models
   var insertHook = function(obj, options){
-    var dataValues = (!historyOptions.full && obj._previousDataValues) || obj.dataValues;
+    var dataValues = (!temporalOptions.full && obj._previousDataValues) || obj.dataValues;
     var historyRecord = modelHistory.create(dataValues, {transaction: options.transaction});
-    if(historyOptions.blocking){
+    if(temporalOptions.blocking){
       return historyRecord;
     }
   }
@@ -77,7 +77,7 @@ var Historical = function(model, sequelize, historyOptions) {
           return modelHistory.bulkCreate(hits, {transaction: options.transaction});
         }
       });
-      if(historyOptions.blocking){
+      if(temporalOptions.blocking){
         return queryAll;
       }
     }
@@ -87,7 +87,7 @@ var Historical = function(model, sequelize, historyOptions) {
 	const source = this.originModel;	
 	const sourceHist = this;
 
-	if(source && !source.name.endsWith(historyOptions.modelSuffix) && source.associations && historyOptions.addAssociations == true && sourceHist) {
+	if(source && !source.name.endsWith(temporalOptions.modelSuffix) && source.associations && temporalOptions.addAssociations == true && sourceHist) {
 		const pkfield = source.primaryKeyField;
 		//adding associations from history model to origin model's association
 		Object.keys(source.associations).forEach(assokey => {			
@@ -96,7 +96,7 @@ var Historical = function(model, sequelize, historyOptions) {
 			const target = association.target;
 			const assocName = association.associationType.charAt(0).toLowerCase() + association.associationType.substr(1);				
 
-			//handle premary keys for belongsToMany
+			//handle primary keys for belongsToMany
 			if(assocName == 'belongsToMany') {								
 				sourceHist.primaryKeys = _.forEach(source.primaryKeys, (x) => x.autoIncrement = false);
 				sourceHist.primaryKeyField = Object.keys(sourceHist.primaryKeys)[0];
@@ -112,12 +112,12 @@ var Historical = function(model, sequelize, historyOptions) {
 		sequelize.models[sourceHist.name] = sourceHist;			
 	}
 
-	return Promise.resolve('Historical associations established');
+	return Promise.resolve('Temporal associations established');
   }
   
   // use `after` to be nonBlocking
   // all hooks just create a copy
-  if (historyOptions.full) {
+  if (temporalOptions.full) {
     model.addHook('afterCreate', insertHook);
     model.addHook('afterUpdate', insertHook);
     model.addHook('afterDestroy', insertHook);
@@ -141,4 +141,4 @@ var Historical = function(model, sequelize, historyOptions) {
   return model;
 };
 
-module.exports = Historical;
+module.exports = Temporal;
