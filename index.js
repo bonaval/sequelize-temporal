@@ -30,7 +30,7 @@ var Temporal = function(model, sequelize, temporalOptions) {
     }
   };
 
-  var excludedAttributes = ["Model","unique","primaryKey","autoIncrement", "set", "get", "_modelAttribute"];
+  var excludedAttributes = ["Model","unique","primaryKey","autoIncrement", "set", "get", "_modelAttribute","references","onDelete","onUpdate"];
   var historyAttributes = _(model.rawAttributes).mapValues(function(v){
     v = _.omit(v, excludedAttributes);
     // remove the "NOW" defaultValue for the default timestamps
