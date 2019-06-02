@@ -94,7 +94,9 @@ var Temporal = function(model, sequelize, temporalOptions) {
 			const association = source.associations[assokey];				
 			const associationOptions = _.cloneDeep(association.options);
 			const target = association.target;
-			const assocName = association.associationType.charAt(0).toLowerCase() + association.associationType.substr(1);				
+			const assocName = association.associationType.charAt(0).toLowerCase() + association.associationType.substr(1);		
+			associationOptions.onDelete = 'NO ACTION';
+			associationOptions.onUpdate = 'NO ACTION';		
 
 			//handle primary keys for belongsToMany
 			if(assocName == 'belongsToMany') {								
