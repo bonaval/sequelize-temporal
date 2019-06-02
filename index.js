@@ -4,22 +4,17 @@ var temporalDefaultOptions = {
   // runs the insert within the sequelize hook chain, disable
   // for increased performance
   blocking: true,
-  full: false
+  full: false,
+  modelSuffix: 'History',
+  addAssociations: false
 };
 
-var excludeAttributes = function(obj, attrsToExclude){
-  // fancy way to exclude attributes
-  return _.omit(obj, _.partial(_.rearg(_.contains,0,2,1), attrsToExclude));
-}
-
-var Temporal = function(model, sequelize, temporalOptions){
-  temporalOptions = _.extend({},temporalDefaultOptions, temporalOptions);
+var Temporal = function(model, sequelize, temporalOptions) {
+	temporalOptions = _.extend({},temporalDefaultOptions, temporalOptions);
 
   var Sequelize = sequelize.Sequelize;
 
-  var historyName = model.name + 'History';
-  //var historyName = model.getTableName() + 'History';
-  //var historyName = model.options.name.singular + 'History';
+  var historyName = model.name + temporalOptions.modelSuffix;
 
   var historyOwnAttrs = {
     hid: {
@@ -35,9 +30,9 @@ var Temporal = function(model, sequelize, temporalOptions){
     }
   };
 
-  var excludedAttributes = ["Model","unique","primaryKey","autoIncrement", "set", "get", "_modelAttribute"];
+  var excludedAttributes = ["Model","unique","primaryKey","autoIncrement", "set", "get", "_modelAttribute","references","onDelete","onUpdate"];
   var historyAttributes = _(model.rawAttributes).mapValues(function(v){
-    v = excludeAttributes(v, excludedAttributes);
+    v = _.omit(v, excludedAttributes);
     // remove the "NOW" defaultValue for the default timestamps
     // we want to save them, but just a copy from our master record
     if(v.fieldName == "createdAt" || v.fieldName == "updatedAt"){
@@ -52,16 +47,18 @@ var Temporal = function(model, sequelize, temporalOptions){
     timestamps: false
   };
   var excludedNames = ["name", "tableName", "sequelize", "uniqueKeys", "hasPrimaryKey", "hooks", "scopes", "instanceMethods", "defaultScope"];
-  var modelOptions = excludeAttributes(model.options, excludedNames);
+  var modelOptions = _.omit(model.options, excludedNames);
   var historyOptions = _.assign({}, modelOptions, historyOwnOptions);
   
   // We want to delete indexes that have unique constraint
   var indexes = historyOptions.indexes;
   if(Array.isArray(indexes)){
-     historyOptions.indexes = indexes.filter(function(index){return !index.unique && index.type != 'UNIQUE';});
+	historyOptions.indexes = indexes.filter(function(index){return !index.unique && index.type != 'UNIQUE';});
   }
 
   var modelHistory = sequelize.define(historyName, historyAttributes, historyOptions);
+  modelHistory.originModel = model;
+  modelHistory.addAssociations = temporalOptions.addAssociations; 
 
   // we already get the updatedAt timestamp from our models
   var insertHook = function(obj, options){
@@ -71,11 +68,12 @@ var Temporal = function(model, sequelize, temporalOptions){
       return historyRecord;
     }
   }
+  
   var insertBulkHook = function(options){
     if(!options.individualHooks){
       var queryAll = model.findAll({where: options.where, transaction: options.transaction}).then(function(hits){
         if(hits){
-          hits = _.pluck(hits, 'dataValues');
+          hits = _.map(hits, 'dataValues');
           return modelHistory.bulkCreate(hits, {transaction: options.transaction});
         }
       });
@@ -85,6 +83,40 @@ var Temporal = function(model, sequelize, temporalOptions){
     }
   }
 
+  var beforeSync = function(options) {
+	const source = this.originModel;	
+	const sourceHist = this;
+
+	if(source && !source.name.endsWith(temporalOptions.modelSuffix) && source.associations && temporalOptions.addAssociations == true && sourceHist) {
+		const pkfield = source.primaryKeyField;
+		//adding associations from history model to origin model's association
+		Object.keys(source.associations).forEach(assokey => {			
+			const association = source.associations[assokey];				
+			const associationOptions = _.cloneDeep(association.options);
+			const target = association.target;
+			const assocName = association.associationType.charAt(0).toLowerCase() + association.associationType.substr(1);		
+			associationOptions.onDelete = 'NO ACTION';
+			associationOptions.onUpdate = 'NO ACTION';		
+
+			//handle primary keys for belongsToMany
+			if(assocName == 'belongsToMany') {								
+				sourceHist.primaryKeys = _.forEach(source.primaryKeys, (x) => x.autoIncrement = false);
+				sourceHist.primaryKeyField = Object.keys(sourceHist.primaryKeys)[0];
+			}
+
+			sourceHist[assocName].apply(sourceHist, [target, associationOptions]);			
+		});
+
+		//adding associations between origin model and history					
+		source.hasMany(sourceHist, { foreignKey: pkfield });
+		sourceHist.belongsTo(source, { foreignKey: pkfield });	
+		
+		sequelize.models[sourceHist.name] = sourceHist;			
+	}
+
+	return Promise.resolve('Temporal associations established');
+  }
+  
   // use `after` to be nonBlocking
   // all hooks just create a copy
   if (temporalOptions.full) {
@@ -106,6 +138,7 @@ var Temporal = function(model, sequelize, temporalOptions){
 
   modelHistory.addHook('beforeUpdate', readOnlyHook);
   modelHistory.addHook('beforeDestroy', readOnlyHook);
+  modelHistory.addHook('beforeSync', 'HistoricalSyncHook', beforeSync); 
 
   return model;
 };

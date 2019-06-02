@@ -14,7 +14,7 @@ Temporal tables maintain __historical versions__ of data. Modifying operations (
 - undo functionalities
 - track interactions (customer support)
 
-Under the hood a history table with the same structure, but without constraints is created.
+Under the hood a history table with the same structure, but without constraints is created (unless option __addAssociation__ is set to __true__).
 
 The normal singular/plural naming scheme in Sequelize is used:
 
@@ -75,12 +75,73 @@ whereas the options are listed here (with default value).
   /* runs the insert within the sequelize hook chain, disable
   for increased performance without warranties */
   blocking: true,
-  /* By default sequelize-temporal persist only changes, and saves the previous state in the history table.
+   /* By default sequelize-temporal persist only changes, and saves the previous state in the history table.
   The "full" option saves all transactions into the temporal database
   (i.e. this includes the latest state.)
-   This allows to only query the hostory table to get the full history of an entity.
+   This allows to only query the history table to get the full history of an entity.
   */
-  full: false
+  full: false,
+  /* 
+  By default sequelize-temporal will add 'History' to the history Model name and 'Histories' to the history table.
+  By updating the modelSuffix value, you can decide what the naming will be.
+  The value will be appended to the history Model name and its plural will be appended to the history tablename.
+
+  examples for table User:
+	modelSuffix: '_Hist'  --> History Model Name: User_Hist  --> History Table Name: User_Hists  
+	modelSuffix: 'Memory'  --> History Model Name: UserMemory  --> History Table Name: UserMemories
+	modelSuffix: 'Pass'  --> History Model Name: UserPass  --> History Table Name: UserPasses
+  */
+  modelSuffix: 'History',
+  /* 
+  By default sequelize-temporal will create the history table without associations.
+  However, setting this flag to true, you can keep association between the history table and the table with the latest value (origin).
+
+  example for table User:
+	  model: 'User'
+	  history model: 'UserHistories'
+	  --> This would add function User.getUserHistories() to return all history entries for that user entry.
+	  --> This would add function UserHistories.getUser() to get the original user from an history.
+
+   If a model has associations, those would be mirrored to the history table.
+   Origin model can only get its own histories.
+   Even if a history table is associated to another origin table thought a foreign key field, the history table is not accessible from that origin table
+
+   Basically, what you can access in the origin table can be accessed from the history table.
+
+   example:
+	model: User
+	history model: UserHistories
+
+	model: Creation
+	history model: CreationHistories
+
+	User <-> Creation: 1 to many
+
+	User.getCreations() exists (1 to many)
+	Creation.getUser() exists (1 to 1)	
+
+	User <-> UserHistories: 1 to many
+
+	User.getUserHistories() exists (1 to many)
+	UserHistories.getUser() exists (1 to 1)
+
+	Creation <-> CreationHistories: 1 to many
+
+	Creation.getCreationHistories() exists (1 to many)
+	CreationHistories.getCreation() exists (1 to 1)
+
+	CreationHistories -> User: many to 1
+
+	CreationHistories.getUser() exists (1 to 1) (same as Creation.getUser())
+	User.GetCreationHistories DOES NOT EXIST. THE ORIGIN TABLE IS NOT MODIFIED.
+
+	UserHistories -> Creation: many to many
+
+	UserHistories.getCreations() exists (1 to many) (same as User.getCreations())
+	CreationHistories.getUser() DOES NOT EXIST. THE ORIGIN TABLE IS NOT MODIFIED.
+
+  */
+  addAssociations: false
 ```
 
 Details
