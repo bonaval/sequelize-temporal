@@ -8,7 +8,8 @@ const assert = chai.assert;
 const eventually = assert.eventually;
 
 describe('Read-only API', function(){
-  	var sequelize;
+	  var sequelize;
+	  var sequelizeHist;
   
 	function newDB(paranoid, options){
 		if(sequelize) {
@@ -16,14 +17,31 @@ describe('Read-only API', function(){
 			sequelize = null;
 		}	
 
-		const dbFile = __dirname + '/.test.sqlite';
-		try {fs.unlinkSync(dbFile);} catch {};
+		const separate = !(!options || !options.test || !options.test.separate || options.test.separate == false)
+
+		const dbFile = __dirname + '/.test.sqlite';		
+
+		try {fs.unlinkSync(dbFile);} catch {};		
 
 		sequelize = new Sequelize('', '', '', {
 			dialect: 'sqlite',
 			storage: dbFile,
 			logging: false//console.log
-		});	
+		});			
+
+		if(separate == true) {
+			console.warn('Test is using separate DBs');
+						
+			const dbFile2 = __dirname + '/.test2.sqlite';
+
+			try {fs.unlinkSync(dbFile2);} catch {};
+
+			sequelizeHist = new Sequelize('', '', '', {
+				dialect: 'sqlite',
+				storage: dbFile2,
+				logging: false//console.log
+			});	
+		}
 
 		//Define origin models
 		const User = sequelize.define('User', { name: Sequelize.TEXT }, {paranoid: paranoid || false});
@@ -50,13 +68,13 @@ describe('Read-only API', function(){
 		Creation.belongsToMany(Tag, { through: CreationTag, foreignKey: 'creation', otherKey: 'tag' });
 
 		//Historyize
-		Historical(User, sequelize, options);
-		Historical(Creation, sequelize, options);  
-		Historical(Tag, sequelize, options);
-		Historical(Event, sequelize, options);
-		Historical(CreationTag, sequelize, options);
-
-		return sequelize.sync({force:true});
+		Historical(User, separate == true? sequelizeHist: sequelize, options);
+		Historical(Creation, separate == true? sequelizeHist: sequelize, options);  
+		Historical(Tag, separate == true? sequelizeHist: sequelize, options);
+		Historical(Event, separate == true? sequelizeHist: sequelize, options);
+		Historical(CreationTag, separate == true? sequelizeHist: sequelize, options);		
+		
+		return sequelize.sync({force:true}).then( s =>  separate == true ? sequelizeHist.sync({force:true}): s);		
 	}
 
 	//Adding 3 tags, 2 creations, 2 events, 2 user
@@ -244,6 +262,10 @@ describe('Read-only API', function(){
 		return newDB();
 	}
 
+	function freshDBWithSeparateHistoryDB(){
+		return newDB(false,  { allowTransactions: false , test: {separate: true}});
+	}
+
 	function freshDBWithAssociations(){
 		return newDB(false,  { addAssociations: true});
 	}
@@ -258,14 +280,78 @@ describe('Read-only API', function(){
 
 	function assertCount(modelHistory, n, opts) {
 		// wrapped, chainable promise
-		return function(obj) {
-			return modelHistory.count(opts).then((count) => {
-				//console.log('Asserting ', modelHistory.name, ' count: ', count, ' expected: ', n);
+		return function(obj) {			
+			return modelHistory.count(opts).then((count) => {				
 				assert.equal(n, count, "history entries")
 				return obj;
 			});
 		}
 	}
+
+	describe('Separate DB Tests', function() {		
+		beforeEach(freshDBWithSeparateHistoryDB);
+		
+		it('onUpdate/onDestroy: should save to the historyDB' , function() {
+			return sequelize.models.User.create()
+				.then(assertCount(sequelizeHist.models.UserHistory,0))
+				.then((user) => {
+					user.name = "foo";
+					return user.save();
+				})
+				.then(assertCount(sequelizeHist.models.UserHistory,1))
+				.then(user => user.destroy())
+				.then(assertCount(sequelizeHist.models.UserHistory,2))
+		});
+
+		it('revert on failed transactions' , function() {
+			return sequelize.transaction()
+				.then((t) => {
+					var opts = {transaction: t};
+					return sequelize.models.User.create({name: "not foo"})
+						.then(assertCount(sequelizeHist.models.UserHistory,0))
+						.then((user) => {							
+							user.name = "foo";
+							user.save(opts);
+						})
+						.then(assertCount(sequelizeHist.models.UserHistory,1))
+						.then(() => t.rollback());
+				})
+				.then(assertCount(sequelizeHist.models.UserHistory,1));
+		});
+
+		it('should archive every entry', function() {
+			return sequelize.models.User.bulkCreate([{name: "foo1"},{name: "foo2"}])
+				.then(assertCount(sequelizeHist.models.UserHistory,0))
+				.then(() => sequelize.models.User.update({ name: 'updated-foo' }, {where: {}}))
+				.then(assertCount(sequelizeHist.models.UserHistory,2))
+		});
+		
+		it('should revert under transactions', function() {
+			return sequelize.transaction()
+				.then(function(t) {
+					var opts = {transaction: t};
+					return sequelize.models.User.bulkCreate([{name: "foo1"},{name: "foo2"}], opts)
+						.then(assertCount(sequelizeHist.models.UserHistory,0))
+						.then(() => sequelize.models.User.update({ name: 'updated-foo' }, {where: {}, transaction: t}))
+						.then(assertCount(sequelizeHist.models.UserHistory,2))
+						.then(() => t.rollback());
+				})
+				.then(assertCount(sequelizeHist.models.UserHistory,2));
+		});
+
+		it('should revert on failed transactions, even when using after hooks' , function(){
+			return sequelize.transaction()
+				.then((transaction) => {
+					var options = { transaction: transaction };
+
+					return sequelize.models.User.create({ name: 'test' }, options)
+						.then(user => user.destroy(options))
+						.then(assertCount(sequelizeHist.models.UserHistory, 1))
+						.then(() => transaction.rollback());
+				})
+				.then(assertCount(sequelizeHist.models.UserHistory,1));
+		});
+	});
 
 	describe('Association Tests', function() {
 		describe('test there are no history association', function(){

@@ -96,6 +96,8 @@ whereas the options are listed here (with default value).
   By default sequelize-temporal will create the history table without associations.
   However, setting this flag to true, you can keep association between the history table and the table with the latest value (origin).
 
+  NOTE: THIS DOES NOT WORK IF YOU ARE USING A SEPARATE DB FOR THE HISTORICAL TABLES. IN THAT CASE, KEEP THE VALUE TO FALSE OR YOU WILL GET AN ERROR.
+
   example for table User:
 	  model: 'User'
 	  history model: 'UserHistories'
@@ -141,7 +143,13 @@ whereas the options are listed here (with default value).
 	CreationHistories.getUser() DOES NOT EXIST. THE ORIGIN TABLE IS NOT MODIFIED.
 
   */
-  addAssociations: false
+  addAssociations: false,
+  /*
+	By default, transactions are allowed but can be disabled with that flag for the historical tables (transactions on original tables should stay the same). It is useful in case you are using a separate DB than the one use by the original DB.
+
+	NOTE: IF YOU USE A SEPARATE DB FOR HISTORICAL TABLE, SET THE VALUE TO FALSE OR YOU WILL GET AN ERROR.
+  */
+  allowTransactions: true
 ```
 
 Details
