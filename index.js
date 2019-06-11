@@ -122,8 +122,10 @@ var Temporal = function(model, sequelize, temporalOptions) {
   // all hooks just create a copy
   if (temporalOptions.full) {
     model.addHook('afterCreate', insertHook);
-    model.addHook('afterUpdate', insertHook);
-    model.addHook('afterDestroy', insertHook);
+	model.addHook('afterUpdate', insertHook);
+	model.addHook('afterBulkUpdate', insertBulkHook);
+	model.addHook('afterDestroy', insertHook);
+	model.addHook('afterBulkDestroy', insertBulkHook);
     model.addHook('afterRestore', insertHook);
   } else {
     model.addHook('beforeUpdate', insertHook);
