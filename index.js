@@ -6,7 +6,8 @@ var temporalDefaultOptions = {
   blocking: true,
   full: false,
   modelSuffix: 'History',
-  addAssociations: false
+  addAssociations: false,
+  allowTransactions: true,
 };
 
 var Temporal = function(model, sequelize, temporalOptions) {
@@ -61,9 +62,9 @@ var Temporal = function(model, sequelize, temporalOptions) {
   modelHistory.addAssociations = temporalOptions.addAssociations; 
 
   // we already get the updatedAt timestamp from our models
-  var insertHook = function(obj, options){
-    var dataValues = (!temporalOptions.full && obj._previousDataValues) || obj.dataValues;
-    var historyRecord = modelHistory.create(dataValues, {transaction: options.transaction});
+  var insertHook = function(obj, options){	
+	var dataValues = (!temporalOptions.full && obj._previousDataValues) || obj.dataValues;
+    var historyRecord = modelHistory.create(dataValues, {transaction: temporalOptions.allowTransactions? options.transaction: null});
     if(temporalOptions.blocking){
       return historyRecord;
     }
@@ -73,8 +74,8 @@ var Temporal = function(model, sequelize, temporalOptions) {
     if(!options.individualHooks){
       var queryAll = model.findAll({where: options.where, transaction: options.transaction}).then(function(hits){
         if(hits){
-          hits = _.map(hits, 'dataValues');
-          return modelHistory.bulkCreate(hits, {transaction: options.transaction});
+		  hits = _.map(hits, 'dataValues');
+          return modelHistory.bulkCreate(hits, {transaction: temporalOptions.allowTransactions? options.transaction: null});
         }
       });
       if(temporalOptions.blocking){
