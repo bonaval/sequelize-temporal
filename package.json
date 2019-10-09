@@ -29,13 +29,13 @@
   },
   "homepage": "https://github.com/bonaval/sequelize-temporal#readme",
   "dependencies": {
-    "lodash": "^4.17.10"
+    "lodash": "^4.17.15"
   },
   "devDependencies": {
     "chai": "^4.2.0",
     "chai-as-promised": "^7.1.1",
-    "mocha": "^5.2.0",
-    "sequelize": "^4.42.0",
-    "sqlite3": "^4.0.6"
+    "mocha": "^6.2.1",
+    "sequelize": "^5.19.5",
+    "sqlite3": "^4.1.0"
   }
 }
