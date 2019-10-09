@@ -9,7 +9,7 @@ var temporalDefaultOptions = {
 
 var excludeAttributes = function(obj, attrsToExclude){
   // fancy way to exclude attributes
-  return _.omit(obj, _.partial(_.rearg(_.contains,0,2,1), attrsToExclude));
+  return _.omit(obj, attrsToExclude);
 }
 
 var Temporal = function(model, sequelize, temporalOptions){
@@ -54,7 +54,7 @@ var Temporal = function(model, sequelize, temporalOptions){
   var excludedNames = ["name", "tableName", "sequelize", "uniqueKeys", "hasPrimaryKey", "hooks", "scopes", "instanceMethods", "defaultScope"];
   var modelOptions = excludeAttributes(model.options, excludedNames);
   var historyOptions = _.assign({}, modelOptions, historyOwnOptions);
-  
+
   // We want to delete indexes that have unique constraint
   var indexes = historyOptions.indexes;
   if(Array.isArray(indexes)){
@@ -75,7 +75,7 @@ var Temporal = function(model, sequelize, temporalOptions){
     if(!options.individualHooks){
       var queryAll = model.findAll({where: options.where, transaction: options.transaction}).then(function(hits){
         if(hits){
-          hits = _.pluck(hits, 'dataValues');
+          hits = _.map(hits, 'dataValues');
           return modelHistory.bulkCreate(hits, {transaction: options.transaction});
         }
       });
@@ -101,7 +101,7 @@ var Temporal = function(model, sequelize, temporalOptions){
   model.addHook('beforeBulkDestroy', insertBulkHook);
 
   var readOnlyHook = function(){
-    throw new Error("This is a read-only history database. You aren't allowed to modify it.");    
+    throw new Error("This is a read-only history database. You aren't allowed to modify it.");
   };
 
   modelHistory.addHook('beforeUpdate', readOnlyHook);
