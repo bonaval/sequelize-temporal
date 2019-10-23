@@ -78,7 +78,7 @@ whereas the options are listed here (with default value).
   /* By default sequelize-temporal persist only changes, and saves the previous state in the history table.
   The "full" option saves all transactions into the temporal database
   (i.e. this includes the latest state.)
-   This allows to only query the hostory table to get the full history of an entity.
+   This allows to only query the history table to get the full history of an entity.
   */
   full: false
 ```
