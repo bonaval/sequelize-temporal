@@ -80,7 +80,9 @@ whereas the options are listed here (with default value).
   (i.e. this includes the latest state.)
    This allows to only query the history table to get the full history of an entity.
   */
-  full: false
+  full: false,
+  /* All fields will be saved to history. Add field names to exclude from history. */
+  excludeFields: [],
 ```
 
 Details
