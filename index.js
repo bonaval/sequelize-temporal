@@ -4,7 +4,8 @@ var temporalDefaultOptions = {
   // runs the insert within the sequelize hook chain, disable
   // for increased performance
   blocking: true,
-  full: false
+  full: false,
+  excludeFields: [],
 };
 
 var excludeAttributes = function(obj, attrsToExclude){
@@ -36,17 +37,27 @@ var Temporal = function(model, sequelize, temporalOptions){
   };
 
   var excludedAttributes = ["Model","unique","primaryKey","autoIncrement", "set", "get", "_modelAttribute"];
-  var historyAttributes = _(model.rawAttributes).mapValues(function(v){
-    v = excludeAttributes(v, excludedAttributes);
-    // remove the "NOW" defaultValue for the default timestamps
-    // we want to save them, but just a copy from our master record
-    if(v.fieldName == "createdAt" || v.fieldName == "updatedAt"){
-      v.type = Sequelize.DATE;
-    }
-    return v;
-  }).assign(historyOwnAttrs).value();
-  // If the order matters, use this:
-  //historyAttributes = _.assign({}, historyOwnAttrs, historyAttributes);
+
+  var historyAttributes = _.reduce(_.keys(model.rawAttributes), function(acc, key) {
+      var v = excludeAttributes(model.rawAttributes[key], excludedAttributes);
+      // drop excluded fields
+      if (
+        temporalOptions.excludeFields.length && 
+        temporalOptions.excludeFields.includes(v.fieldName)
+      ) {
+        return acc
+      }
+
+      // remove the "NOW" defaultValue for the default timestamps
+      // we want to save them, but just a copy from our master record
+      if(v.fieldName == "createdAt" || v.fieldName == "updatedAt"){
+        v.type = Sequelize.DATE;
+      }
+
+      acc[key] = v
+      return acc
+    }, {})
+  historyAttributes = _.assign({}, historyOwnAttrs, historyAttributes);
 
   var historyOwnOptions = {
     timestamps: false

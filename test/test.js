@@ -35,6 +35,20 @@ describe('Read-only API', function(){
     return sequelize.sync({ force: true });
   }
 
+  function freshDBWithExcludedFields() {
+    sequelize = new Sequelize('', '', '', {
+      dialect: 'sqlite',
+      storage: __dirname + '/.test.sqlite'
+    });
+    User = Temporal(sequelize.define('User', {
+      name: Sequelize.TEXT,
+      fieldToExclude: Sequelize.TEXT,
+    }, { paranoid: true }), sequelize, { excludeFields: ['fieldToExclude'] });
+    UserHistory = sequelize.models.UserHistory;
+
+    return sequelize.sync({ force: true });
+  }
+
   function assertCount(modelHistory, n, opts){
     // wrapped, chainable promise
     return function(obj){
@@ -331,5 +345,27 @@ describe('Read-only API', function(){
     });
 
   });
+
+  describe('exclude fields option', function() {
+
+    beforeEach(freshDBWithExcludedFields);
+
+    it('onUpdate/onDestroy: shouldn\'t store excluded fields' , function(){
+      return User.create()
+      .then(assertCount(UserHistory,0))
+      .then(function(user){
+        user.name = "foo";
+        return user.save();
+      })
+      .then(function() {
+        return UserHistory.findAll();
+      })
+      .then(function(histories) {
+        assertCount(UserHistory, 1)(histories)
+        assert.equal(histories[0].fieldToExclude, null, 'fieldToExclude null')
+      })
+    });
+
+  })
 
 });
