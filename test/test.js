@@ -9,15 +9,16 @@ var eventually = assert.eventually;
 describe('Read-only API', function(){
   var sequelize, User, UserHistory;
 
-  function freshDB(){
+  function freshDB(options = {}){
     // overwrites the old SQLite DB
     sequelize = new Sequelize('', '', '', {
       dialect: 'sqlite',
       storage: __dirname + '/.test.sqlite'
     });
     User = Temporal(sequelize.define('User', {
-      name: Sequelize.TEXT
-    }), sequelize);
+      name: Sequelize.TEXT,
+      state: Sequelize.TEXT
+    }), sequelize, options);
     UserHistory = sequelize.models.UserHistory;
     return sequelize.sync({ force: true });
   }
@@ -179,6 +180,7 @@ describe('Read-only API', function(){
   });
 
   describe('read-only ', function(){
+    beforeEach(freshDB);
     it('should forbid updates' , function(){
       var userUpdate = UserHistory.create().then(function(uh){
         uh.update({name: 'bla'});
@@ -330,6 +332,51 @@ describe('Read-only API', function(){
         .then(assertCount(UserHistory,0));
     });
 
+  });
+
+  describe('conditional history record creation functionality', function(){
+    beforeEach(freshDB.bind(this, {
+        shouldRecordHistory: function(obj){
+        if (obj._previousDataValues.state !== "draft"){
+            return true;
+          }
+          return false;
+        }
+      })
+    )
+  
+    it('should use the shouldRecordHistory if provided' , function(){
+      return User.create({ name: 'test' })
+      .then(function(user) {
+        //Should recod 'test' 
+        return user.update({ name: 'renamed', state: 'draft'});
+      })
+      .then(function(user) {
+        //Should not record 'renamed' (draft state)
+        return user.update({ name: 'renamedAgain', state: 'release' });
+      })
+      .then(function(user) {
+        //Should record 'renamedAgain'
+        return user.update({ name: 'ignore', state: 'draft' });
+      })
+      .then(function(user) {
+        //Should not record 'ignore' (draft state)
+        return user.update({ name: 'testV2', state: 'release' });
+      })
+      .then(function(user) {
+        //Should record 'testV2'
+        return user.update({ name: 'lastEdit', state: 'release' });
+      })
+      .then(function() {
+        return UserHistory.findAll();
+      })
+      .then(function(histories) {
+        assert.equal(histories.length, 3, 'three entries in DB');
+        assert.equal(histories[0].name, 'test', 'first version saved');
+        assert.equal(histories[1].name, 'renamedAgain', 'third version saved');
+        assert.equal(histories[2].name, 'testV2', 'third version saved');
+      });
+    });
   });
 
 });
