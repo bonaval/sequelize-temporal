@@ -80,7 +80,10 @@ whereas the options are listed here (with default value).
   (i.e. this includes the latest state.)
    This allows to only query the hostory table to get the full history of an entity.
   */
-  full: false
+  full: false,
+  /* If provided, this function will be used to determine if a given record should be logged into the history table
+  */
+  shouldRecordHistory: function(obj){return true}
 ```
 
 Details
