@@ -10,6 +10,14 @@ describe('Read-only API', function(){
   var sequelize, User, UserHistory;
 
   function freshDB(){
+    return freshDBWithOptions();
+  }
+
+  function freshDBWithFullModeAndParanoid() {
+    return freshDBWithOptions({ paranoid: true }, { full: true });
+  }
+
+  function freshDBWithOptions(modelOptions, temporalOptions){
     // overwrites the old SQLite DB
     sequelize = new Sequelize('', '', '', {
       dialect: 'sqlite',
@@ -17,21 +25,8 @@ describe('Read-only API', function(){
     });
     User = Temporal(sequelize.define('User', {
       name: Sequelize.TEXT
-    }), sequelize);
+    }, modelOptions), sequelize, temporalOptions);
     UserHistory = sequelize.models.UserHistory;
-    return sequelize.sync({ force: true });
-  }
-
-  function freshDBWithFullModeAndParanoid() {
-    sequelize = new Sequelize('', '', '', {
-      dialect: 'sqlite',
-      storage: __dirname + '/.test.sqlite'
-    });
-    User = Temporal(sequelize.define('User', {
-      name: Sequelize.TEXT
-    }, { paranoid: true }), sequelize, { full: true });
-    UserHistory = sequelize.models.UserHistory;
-
     return sequelize.sync({ force: true });
   }
 
@@ -328,6 +323,50 @@ describe('Read-only API', function(){
             });
         })
         .then(assertCount(UserHistory,0));
+    });
+
+  });
+
+  describe('silent mode', function(){
+
+    it('onUpdate: should save to the historyDB if silent option is true but skipIfSilent is not set' , async function(){
+      await freshDB();
+
+      return User.create()
+          .then(assertCount(UserHistory,0))
+          .then(function(user){
+            user.name = "foo";
+            return user.save({ silent: true });
+          }).then(assertCount(UserHistory,1))
+          .then(function(user){
+            return user.destroy();
+          }).then(assertCount(UserHistory,2))
+    });
+
+    it('onUpdate: should not save to the historyDB if silent option is true and skipIfSilent is true' , async function(){
+      await freshDBWithOptions(undefined, { skipIfSilent: true });
+
+      return User.create()
+          .then(assertCount(UserHistory,0))
+          .then(function(user){
+            user.name = "foo";
+            return user.save({ silent: true });
+          }).then(assertCount(UserHistory,0))
+          .then(function(user){
+            return user.destroy();
+          }).then(assertCount(UserHistory,1))
+    });
+
+    it('bulkUpdate: should not save to the historyDB if silent is true and skipIfSilent is true' , async function(){
+      await freshDBWithOptions(undefined, { skipIfSilent: true });
+
+      return User.bulkCreate([
+          {name: "foo1"},
+          {name: "foo2"},
+        ]).then(assertCount(UserHistory,0))
+            .then(function(){
+              return User.update({ name: 'updated-foo' }, { where: {}, silent: true });
+            }).then(assertCount(UserHistory,0))
     });
 
   });

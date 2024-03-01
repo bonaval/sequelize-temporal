@@ -4,7 +4,8 @@ var temporalDefaultOptions = {
   // runs the insert within the sequelize hook chain, disable
   // for increased performance
   blocking: true,
-  full: false
+  full: false,
+  skipIfSilent: false
 };
 
 var excludeAttributes = function(obj, attrsToExclude){
@@ -65,20 +66,30 @@ var Temporal = function(model, sequelize, temporalOptions){
 
   // we already get the updatedAt timestamp from our models
   var insertHook = function(obj, options){
+    if (options.silent && temporalOptions.skipIfSilent) {
+      return;
+    }
+
     var dataValues = (!temporalOptions.full && obj._previousDataValues) || obj.dataValues;
     var historyRecord = modelHistory.create(dataValues, {transaction: options.transaction});
+
     if(temporalOptions.blocking){
       return historyRecord;
     }
   }
   var insertBulkHook = function(options){
     if(!options.individualHooks){
+      if (options.silent && temporalOptions.skipIfSilent) {
+        return;
+      }
+
       var queryAll = model.findAll({where: options.where, transaction: options.transaction}).then(function(hits){
         if(hits){
           hits = _.map(hits, 'dataValues');
           return modelHistory.bulkCreate(hits, {transaction: options.transaction});
         }
       });
+
       if(temporalOptions.blocking){
         return queryAll;
       }
