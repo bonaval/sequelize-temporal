@@ -1,13 +1,13 @@
 {
   "name": "sequelize-temporal",
-  "version": "1.0.8",
+  "version": "2.0.0",
   "description": "Temporal tables for Sequelize",
   "main": "index.js",
   "directories": {
     "test": "test"
   },
   "scripts": {
-    "test": "./node_modules/mocha/bin/mocha"
+    "test": "mocha"
   },
   "repository": {
     "type": "git",
