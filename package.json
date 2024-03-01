@@ -34,14 +34,17 @@
     "url": "https://github.com/bonaval/sequelize-temporal/issues"
   },
   "homepage": "https://github.com/bonaval/sequelize-temporal#readme",
+  "engines": {
+    "node": ">= 18"
+  },
   "dependencies": {
-    "lodash": "^4.17.15"
+    "lodash": "4.17.21"
   },
   "devDependencies": {
-    "chai": "^4.2.0",
-    "chai-as-promised": "^7.1.1",
-    "mocha": "^6.2.1",
-    "sequelize": "^5.19.5",
-    "sqlite3": "^4.1.0"
+    "chai": "4.4.1",
+    "chai-as-promised": "7.1.1",
+    "mocha": "10.3.0",
+    "sequelize": "6.37.1",
+    "sqlite3": "5.1.7"
   }
 }
