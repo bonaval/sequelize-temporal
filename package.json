@@ -23,6 +23,12 @@
     "historical"
   ],
   "author": "greenify <greenify@notsharingmy.info> (https://github.com/greenify)",
+  "contributors": [
+    {
+      "name": "David DOLCIMASCOLO",
+      "url": "https://github.com/ddolcimascolo"
+    }
+  ],
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/bonaval/sequelize-temporal/issues"
