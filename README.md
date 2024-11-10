@@ -72,15 +72,28 @@ whereas the options are listed here (with default value).
 
 ```js
 {
-  /* runs the insert within the sequelize hook chain, disable
-  for increased performance without warranties */
-  blocking: true,
-  /* By default sequelize-temporal persist only changes, and saves the previous state in the history table.
-  The "full" option saves all transactions into the temporal database
-  (i.e. this includes the latest state.)
-   This allows to only query the hostory table to get the full history of an entity.
-  */
-  full: false
+    /**
+     * Runs the insert within the sequelize hook chain, disable for increased performance without warranties
+     */
+    blocking: true,
+    /**
+     * By default sequelize-temporal persist only changes, and saves the previous state in the history table.
+     * The "full" option saves all transactions into the temporal database (i.e. this includes the latest state.)
+     * This allows to only query the hostory table to get the full history of an entity.
+     */
+    full: false,
+    /**
+     * Whether to skip inserting an History line if the update() call is silent.
+     */
+    skipIfSilent: false,
+    /**
+     * This library will sometimes reload() an updated entity because it misses a few attributes. In order to minimize
+     * the number of extra SQL queries, an heuristic is applied to perform the reload() only if necessary. This mainly
+     * boils down to "is this attribute <x> missing ?".
+     * The `reloadIgnoredAttributes` can be used to ignore certain attributes from this check.
+     */
+    reloadIgnoredAttributes: ['deletedAt']
+}
 ```
 
 Details
