@@ -21,7 +21,8 @@ describe('Read-only API', function(){
     // overwrites the old SQLite DB
     sequelize = new Sequelize('', '', '', {
       dialect: 'sqlite',
-      storage: __dirname + '/.test.sqlite'
+      storage: __dirname + '/.test.sqlite',
+      logging: process.env.LOGGING === 'true' ? console.log : false
     });
     User = Temporal(sequelize.define('User', {
       name: Sequelize.TEXT
@@ -323,6 +324,30 @@ describe('Read-only API', function(){
             });
         })
         .then(assertCount(UserHistory,0));
+    });
+
+    it('onUpdate: should store the previous version to the historyDB even if entity was partially loaded' , async function(){
+      const created = await User.create({ name: 'name' });
+      const user = await User.findByPk(created.id, { attributes: ['id', 'name'] }); // Don't fetch timestamps
+
+      await user.update({ name: 'newName' });
+      await user.update({ name: 'thirdName' });
+
+      const history = await UserHistory.findAll();
+
+      assert.equal(history.length, 3, 'initial revision and to updates saved');
+
+      const [initial, firstUpdate, secondUpdate] = history;
+
+      assert.equal(+initial.createdAt, +firstUpdate.createdAt, 'createdAt was saved during first update, despite not being eagerly loaded');
+      assert.equal(+initial.createdAt, +secondUpdate.createdAt, 'createdAt was saved during second update, despite not being eagerly loaded');
+
+      assert.isAtLeast(firstUpdate.updatedAt, initial.createdAt, 'updatedAt was saved during first update');
+      assert.isAtLeast(secondUpdate.updatedAt, firstUpdate.updatedAt, 'updatedAt was saved during second update');
+
+      assert.equal('name', initial.name);
+      assert.equal('newName', firstUpdate.name);
+      assert.equal('thirdName', secondUpdate.name);
     });
 
   });

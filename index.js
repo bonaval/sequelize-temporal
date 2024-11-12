@@ -5,7 +5,8 @@ var temporalDefaultOptions = {
   // for increased performance
   blocking: true,
   full: false,
-  skipIfSilent: false
+  skipIfSilent: false,
+  reloadIgnoredAttributes: ['deletedAt']
 };
 
 var excludeAttributes = function(obj, attrsToExclude){
@@ -36,8 +37,9 @@ var Temporal = function(model, sequelize, temporalOptions){
     }
   };
 
+  var attributes = model.getAttributes();
   var excludedAttributes = ["Model","unique","primaryKey","autoIncrement", "set", "get", "_modelAttribute"];
-  var historyAttributes = _(model.rawAttributes).mapValues(function(v){
+  var historyAttributes = _(attributes).mapValues(function(v){
     v = excludeAttributes(v, excludedAttributes);
     // remove the "NOW" defaultValue for the default timestamps
     // we want to save them, but just a copy from our master record
@@ -70,8 +72,38 @@ var Temporal = function(model, sequelize, temporalOptions){
       return;
     }
 
-    var dataValues = (!temporalOptions.full && obj._previousDataValues) || obj.dataValues;
-    var historyRecord = modelHistory.create(dataValues, {transaction: options.transaction});
+    async function getDataValues() {
+      if (!temporalOptions.full) {
+        return obj._previousDataValues || obj.dataValues;
+      }
+
+      /**
+       * This is the initial record of a new entity, just use the attributes that were used.
+       */
+      if (obj._options.isNewRecord) {
+        return obj.dataValues;
+      }
+
+      const attributesToReload = Object.keys(attributes).filter(attribute => {
+        if (!temporalOptions.reloadIgnoredAttributes.includes(attribute) && !(attribute in obj.dataValues)) {
+          return true;
+        }
+      });
+
+      /**
+       * In 'full' mode, it's important that we are able to save a History version even though the caller initially fetched
+       * a partial instance. We do so at the cost of an extra SELECT to get up-to-date values (remember that in 'full' mode
+       * we are using afterX hooks, so this works).
+       * Model.reload() will do its magic to merge the newly fetched values directly in dataValues. #gg
+       */
+      if (attributesToReload.length > 0) {
+        await obj.reload({attributes: attributesToReload, transaction: options.transaction, paranoid: false, include: []})
+      }
+
+      return obj.dataValues;
+    }
+
+    var historyRecord = getDataValues().then(dataValues => modelHistory.create(dataValues, {transaction: options.transaction}));
 
     if(temporalOptions.blocking){
       return historyRecord;
