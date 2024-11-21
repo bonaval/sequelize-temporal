@@ -33,7 +33,8 @@ describe('Read-only API', function(){
       logging
     });
     User = Temporal(sequelize.define('User', {
-      name: Sequelize.TEXT
+      name: Sequelize.TEXT,
+      virtual: Sequelize.VIRTUAL(Sequelize.STRING, ['name']),
     }, modelOptions), sequelize, temporalOptions);
     UserHistory = sequelize.models.UserHistory;
 
@@ -374,6 +375,38 @@ describe('Read-only API', function(){
       assert.deepEqual(selects, [
         "SELECT `User`.`id`, `User`.`name`, `Group`.`id` AS `Group.id`, `Group`.`name` AS `Group.name`, `Group`.`createdAt` AS `Group.createdAt`, `Group`.`updatedAt` AS `Group.updatedAt` FROM `Users` AS `User` LEFT OUTER JOIN `Groups` AS `Group` ON `User`.`GroupId` = `Group`.`id` WHERE (`User`.`deletedAt` IS NULL AND `User`.`id` = 1);",
         "SELECT `createdAt`, `GroupId` FROM `Users` AS `User` WHERE `User`.`id` = 1;", // Reload for first update, no includes and only required fields. Second update does not need a reload
+        "SELECT `id`, `name`, `createdAt`, `updatedAt`, `deletedAt`, `hid`, `archivedAt` FROM `UserHistories` AS `UserHistory`;"
+      ])
+    });
+
+    it('onUpdate: should not reload virtual fields' , async function(){
+      const created = await User.create({ name: 'name' });
+      const user = await User.findByPk(created.id, { attributes: ['id', 'name', 'createdAt', 'GroupId'] }); // Don't fetch timestamps
+
+      await user.update({ name: 'newName' });
+      await user.update({ name: 'thirdName' });
+
+      const history = await UserHistory.findAll();
+
+      assert.equal(history.length, 3, 'initial revision and to updates saved');
+
+      const [initial, firstUpdate, secondUpdate] = history;
+
+      assert.equal(+initial.createdAt, +firstUpdate.createdAt, 'createdAt was saved during first update, despite not being eagerly loaded');
+      assert.equal(+initial.createdAt, +secondUpdate.createdAt, 'createdAt was saved during second update, despite not being eagerly loaded');
+
+      assert.isAtLeast(firstUpdate.updatedAt, initial.createdAt, 'updatedAt was saved during first update');
+      assert.isAtLeast(secondUpdate.updatedAt, firstUpdate.updatedAt, 'updatedAt was saved during second update');
+
+      assert.equal('name', initial.name);
+      assert.equal('newName', firstUpdate.name);
+      assert.equal('thirdName', secondUpdate.name);
+
+      const selects = queries.filter(query => query.startsWith('SELECT'));
+
+      // No reload
+      assert.deepEqual(selects, [
+        "SELECT `id`, `name`, `createdAt`, `GroupId` FROM `Users` AS `User` WHERE (`User`.`deletedAt` IS NULL AND `User`.`id` = 1);",
         "SELECT `id`, `name`, `createdAt`, `updatedAt`, `deletedAt`, `hid`, `archivedAt` FROM `UserHistories` AS `UserHistory`;"
       ])
     });
