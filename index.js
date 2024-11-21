@@ -97,7 +97,7 @@ var Temporal = function(model, sequelize, temporalOptions){
        * Model.reload() will do its magic to merge the newly fetched values directly in dataValues. #gg
        */
       if (attributesToReload.length > 0) {
-        await obj.reload({attributes: attributesToReload, transaction: options.transaction, paranoid: false, include: []})
+        await obj.reload({attributes: attributesToReload, transaction: options.transaction, paranoid: false, include: null})
       }
 
       return obj.dataValues;
