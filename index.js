@@ -72,6 +72,10 @@ var Temporal = function(model, sequelize, temporalOptions){
       return;
     }
 
+    function isVirtual(attribute) {
+      return attributes[attribute].type instanceof Sequelize.VIRTUAL;
+    }
+
     async function getDataValues() {
       if (!temporalOptions.full) {
         return obj._previousDataValues || obj.dataValues;
@@ -85,7 +89,7 @@ var Temporal = function(model, sequelize, temporalOptions){
       }
 
       const attributesToReload = Object.keys(attributes).filter(attribute => {
-        if (!temporalOptions.reloadIgnoredAttributes.includes(attribute) && !(attribute in obj.dataValues)) {
+        if (!temporalOptions.reloadIgnoredAttributes.includes(attribute) && !isVirtual(attribute) && !(attribute in obj.dataValues)) {
           return true;
         }
       });
@@ -97,7 +101,7 @@ var Temporal = function(model, sequelize, temporalOptions){
        * Model.reload() will do its magic to merge the newly fetched values directly in dataValues. #gg
        */
       if (attributesToReload.length > 0) {
-        await obj.reload({attributes: attributesToReload, transaction: options.transaction, paranoid: false, include: []})
+        await obj.reload({attributes: attributesToReload, transaction: options.transaction, paranoid: false, include: null})
       }
 
       return obj.dataValues;
